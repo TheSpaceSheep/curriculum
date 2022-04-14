@@ -64,6 +64,7 @@ def select_subset_V2(data, n_subset, n_attributes, n_values, random_seed=7):
 
 
 def one_hotify(data, n_attributes, n_values):
+    # data: list of tuples of length n_attributes
     r = []
     for config in data:
         z = torch.zeros((n_attributes, n_values))

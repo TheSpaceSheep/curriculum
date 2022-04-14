@@ -24,6 +24,7 @@ except ImportError:
 
 
 def ask_sender(n_attributes, n_values, dataset, sender, device):
+    # dataset shape : (29, 15) (list of tensors)
     attributes = []
     strings = []
     meanings = []
