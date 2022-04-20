@@ -87,8 +87,7 @@ def get_params(params):
     )
     parser.add_argument(
         "--fixed_length",
-        type=str,
-        default="True",
+        action="store_true",
         help="Whether the messages are variable or fixed length",
     )
 
@@ -200,7 +199,7 @@ def main(params):
 
     opts = get_params(params)
     device = opts.device
-    opts.fixed_length = (opts.fixed_length=="True")
+    print(opts)
 
     full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
     if opts.density_data > 0:
@@ -259,7 +258,6 @@ def main(params):
     else:
         raise ValueError(f"Unknown sender cell, {opts.sender_cell}")
 
-    print(opts.fixed_length)
     if opts.fixed_length:
         sender = PlusOneWrapper(sender)  # to enforce fixed-length messages
 
