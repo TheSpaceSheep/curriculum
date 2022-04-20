@@ -332,3 +332,82 @@ class Trainer:
 
         if latest_file is not None:
             self.load_from_checkpoint(latest_file)
+
+
+class CurriculumTrainer(Trainer):
+    """Overrides the train method to train according to a curriculum"""
+    def __init__(
+        self,
+        game: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        train_data: DataLoader,
+        optimizer_scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
+        validation_data: Optional[DataLoader] = None,
+        device: torch.device = None,
+        callbacks: Optional[List[Callback]] = None,
+        grad_norm: float = None,
+        aggregate_interaction_logs: bool = True,
+        next_task_threshold=0.8,
+        curriculum=None,
+    ):
+        super(self, CurriculumTrainer).__init__(
+                game, 
+                optimizer, 
+                train_data, 
+                optimizer_scheduler,
+                validation_data,
+                device,
+                callbacks,
+                grad_norm,
+                aggregate_interaction_logs
+            )  
+
+        # threshold after which the learner is considered 
+        # good enough to go to the next task
+        self.next_task_threshold = next_task_threshold
+
+        # generator object (?) that yields new tasks ?
+        self.curriculum=None
+        
+
+    def train(self, n_epochs):
+        for callback in self.callbacks:
+            callback.on_train_begin(self)
+
+        for epoch in range(self.start_epoch, n_epochs):
+            for callback in self.callbacks:
+                callback.on_epoch_begin(epoch + 1)
+
+            train_loss, train_interaction = self.train_epoch()
+
+            for callback in self.callbacks:
+                callback.on_epoch_end(train_loss, train_interaction, epoch + 1)
+
+            validation_loss = validation_interaction = None
+            if (
+                self.validation_data is not None
+                and self.validation_freq > 0
+                and (epoch + 1) % self.validation_freq == 0
+            ):
+                for callback in self.callbacks:
+                    callback.on_validation_begin(epoch + 1)
+                validation_loss, validation_interaction = self.eval()
+
+                for callback in self.callbacks:
+                    callback.on_validation_end(
+                        validation_loss, validation_interaction, epoch + 1
+                    )
+
+            if self.should_stop:
+                for callback in self.callbacks:
+                    callback.on_early_stopping(
+                        train_loss,
+                        train_interaction,
+                        epoch + 1,
+                        validation_loss,
+                        validation_interaction,
+                    )
+                break
+
+        for callback in self.callbacks:
+            callback.on_train_end()
