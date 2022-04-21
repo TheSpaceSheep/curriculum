@@ -124,22 +124,24 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
     return train, test
 
 
-def build_test_set(n_attributes, n_values, size) -> list[tuple]:
+def build_test_set(n_attributes, n_values, size):
     """
     Samples {size} elements from the dataset, with no possible repeat
     """
-    max_size = 10e8
+    max_size = 10e8  # TODO: find better value for this empirically
     if size > max_size:
-        print(f"Warning : trying to build a validation set of size greater than {max_size} which might take a long time")
+        print(f"Warning : trying to build a test set of size greater than {max_size} which might take a long time")
 
     # i think this can be sped up a lot using a tree
     # data_tree = as_tree(data)
 
     data = []
-    for _ in range(size):
-        sample = tuple([random.randint(n_values) for _ in range(n_attributes)])
+    i = 0
+    while i < size:
+        sample = tuple([random.randint(0, n_values-1) for _ in range(n_attributes)])
         if sample not in data:
             data.append(sample)
+            i += 1
         # if sample not in data_tree:
         #    data_tree.insert(sample)
         #    data.append(sample)
@@ -148,26 +150,36 @@ def build_test_set(n_attributes, n_values, size) -> list[tuple]:
     return data
 
 
-def build_train_and_test_set(n_attributes, n_values, train_size, test_size) -> list[tuple], list[tuple):
+def build_datasets(n_attributes, n_values, train_size, test_size, validation_size):
     """
     Returns a train and test set by sampling the data
     samples can be repeated in the training set but not in the testing set
+    Also there is no overlap between train and test set.
     """
-    test_set = build_test_set(n_attributes, n_values, size=test_size)
+    # TODO: faire un test pour s'assurer que 
+    # le dataset va être construit relativement
+    # vite (size << input space)
+    # create a test and validation set simultaneously to prevent repeats
+    all_test_data = build_test_set(n_attributes, n_values, size=test_size+validation_size)
+    test_set = all_test_data[:test_size]
+    validation_set = all_test_data[test_size:]
 
     # i think this can be sped up a lot using a tree
     # data_tree = as_tree(data)
 
     train_set = []
-    for _ in range(train_size):
-        sample = tuple([random.randint(n_values) for _ in range(n_attributes)])
-        if sample not in test_set:
+    i = 0
+    while i < train_size:
+        sample = tuple([random.randint(0, n_values-1) for _ in range(n_attributes)])
+        if sample not in all_test_data:
             train_set.append(sample)
+            i += 1
         # if sample not in test_set_tree:
         #    test_set_tree.insert(sample)
         #    train_set.append(sample)
 
-    return train_set, test_set
+    print(len(train_set), len(test_set), len(validation_set))
+    return train_set, test_set, validation_set
 
 
 

@@ -28,6 +28,7 @@ from egg.zoo.compo_vs_generalization.data import (
     select_subset_V2,
     split_holdout,
     split_train_test,
+    build_datasets
 )
 from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
@@ -90,6 +91,30 @@ def get_params(params):
         action="store_true",
         help="Whether the messages are variable or fixed length",
     )
+    parser.add_argument(
+        "--full_data",
+        action="store_true",
+        help="Construct full dataset in memory (can fail on large input spaces!)",
+    )
+    parser.add_argument(
+        "--train_size",
+        type=int,
+        default="1_000_000",
+        help="Size of the training set",
+    )
+    parser.add_argument(
+        "--test_size",
+        type=int,
+        default="1000",
+        help="Size of the testing set",
+    )
+    parser.add_argument(
+        "--validation_size",
+        type=int,
+        default="1000",
+        help="Size of the validation set",
+    )
+
 
     args = core.init(arg_parser=parser, params=params)
     return args
@@ -201,32 +226,51 @@ def main(params):
     device = opts.device
     print(opts)
 
-    full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
-    if opts.density_data > 0:
-        sampled_data = select_subset_V2(
-            full_data, opts.density_data, opts.n_attributes, opts.n_values
+    if opts.full_data:
+        full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
+        if opts.density_data > 0:
+            sampled_data = select_subset_V2(
+                full_data, opts.density_data, opts.n_attributes, opts.n_values
+            )
+            full_data = copy.deepcopy(sampled_data)
+
+        train, generalization_holdout = split_holdout(full_data)
+        train, uniform_holdout = split_train_test(train, 0.1)
+
+        generalization_holdout, train, uniform_holdout, full_data = [
+            one_hotify(x, opts.n_attributes, opts.n_values)
+            for x in [generalization_holdout, train, uniform_holdout, full_data]
+        ]
+
+        train, validation = ScaledDataset(train, opts.data_scaler), ScaledDataset(train, 1)
+
+        generalization_holdout, uniform_holdout, full_data = (
+            ScaledDataset(generalization_holdout),
+            ScaledDataset(uniform_holdout),
+            ScaledDataset(full_data),
         )
-        full_data = copy.deepcopy(sampled_data)
+        generalization_holdout_loader, uniform_holdout_loader, full_data_loader = [
+            DataLoader(x, batch_size=opts.batch_size)
+            for x in [generalization_holdout, uniform_holdout, full_data]
+        ]
 
-    train, generalization_holdout = split_holdout(full_data)
-    train, uniform_holdout = split_train_test(train, 0.1)
+    else:
+        train, test, validation = \
+            build_datasets(opts.n_attributes, opts.n_values, opts.train_size, opts.test_size, opts.validation_size)
 
-    generalization_holdout, train, uniform_holdout, full_data = [
-        one_hotify(x, opts.n_attributes, opts.n_values)
-        for x in [generalization_holdout, train, uniform_holdout, full_data]
-    ]
+        uniform_holdout = test
+        
+        train, validation, uniform_holdout = [
+            one_hotify(x, opts.n_attributes, opts.n_values)
+            for x in [train, validation, uniform_holdout]
+        ]
 
-    train, validation = ScaledDataset(train, opts.data_scaler), ScaledDataset(train, 1)
+        train = ScaledDataset(train, opts.data_scaler)
+        validation = ScaledDataset(validation, 1)
+        uniform_holdout = ScaledDataset(uniform_holdout)
 
-    generalization_holdout, uniform_holdout, full_data = (
-        ScaledDataset(generalization_holdout),
-        ScaledDataset(uniform_holdout),
-        ScaledDataset(full_data),
-    )
-    generalization_holdout_loader, uniform_holdout_loader, full_data_loader = [
-        DataLoader(x, batch_size=opts.batch_size)
-        for x in [generalization_holdout, uniform_holdout, full_data]
-    ]
+        uniform_holdout_loader = DataLoader(uniform_holdout, batch_size=opts.batch_size)
+
 
     train_loader = DataLoader(train, batch_size=opts.batch_size)
     validation_loader = DataLoader(validation, batch_size=len(validation))
@@ -290,13 +334,13 @@ def main(params):
     )
 
     loaders = []
-    loaders.append(
-        (
-            "generalization hold out",
-            generalization_holdout_loader,
-            DiffLoss(opts.n_attributes, opts.n_values, generalization=True),
-        )
-    )
+    #    loaders.append(
+    #        (
+    #            "generalization hold out",
+    #            generalization_holdout_loader,
+    #            DiffLoss(opts.n_attributes, opts.n_values, generalization=True),
+    #        )
+    #    )
     loaders.append(
         (
             "uniform holdout",
