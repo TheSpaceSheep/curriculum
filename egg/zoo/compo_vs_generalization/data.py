@@ -64,6 +64,18 @@ def select_subset_V2(data, n_subset, n_attributes, n_values, random_seed=7):
 
 
 def one_hotify(data, n_attributes, n_values):
+    """
+    Params:
+        data: list of tuples of length n_attributes
+              [(a1, ..., an), (a2, ..., an), ...]
+        n_attributes: int
+        n_values: int
+
+    Returns :
+        r: list of flattened one-hot matrices
+           [r1, r2, ...] where the ri are 1D torch 
+           tensors of shape (n_attributes x n_values)
+    """
     r = []
     for config in data:
         z = torch.zeros((n_attributes, n_values))
