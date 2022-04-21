@@ -3,9 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# vim swap files
+# vim swap and session files
 *.swp
 *.swo
+*.vim
+
 
 data/
 .idea/
