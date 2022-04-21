@@ -6,11 +6,7 @@
 import copy
 import itertools
 import random
-<<<<<<< HEAD
 from typing import Tuple, List
-=======
-import treelib
->>>>>>> draft dataset construction
 
 import torch
 
@@ -128,7 +124,6 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
     return train, test
 
 
-<<<<<<< HEAD
 def build_random_dataset(n_attributes: int,
                          n_values: int,
                          size: int,

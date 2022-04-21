@@ -286,7 +286,6 @@ def main(params):
 
         train = ScaledDataset(train, opts.data_scaler)
         validation = ScaledDataset(validation, 1)
-        test = ScaledDataset(test)
 
         test_loader = DataLoader(test, batch_size=opts.batch_size)
 
