@@ -6,11 +6,15 @@
 import copy
 import itertools
 import random
+import treelib
 
 import torch
 
 
 def enumerate_attribute_value(n_attributes, n_values):
+    """
+    Returns the ENTIRE dataset (not suitable for very large input spaces)
+    """
     iters = [range(n_values) for _ in range(n_attributes)]
 
     return list(itertools.product(*iters))
@@ -118,6 +122,53 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
     assert len(train) + len(test) == len(dataset)
 
     return train, test
+
+
+def build_test_set(n_attributes, n_values, size) -> list[tuple]:
+    """
+    Samples {size} elements from the dataset, with no possible repeat
+    """
+    max_size = 10e8
+    if size > max_size:
+        print(f"Warning : trying to build a validation set of size greater than {max_size} which might take a long time")
+
+    # i think this can be sped up a lot using a tree
+    # data_tree = as_tree(data)
+
+    data = []
+    for _ in range(size):
+        sample = tuple([random.randint(n_values) for _ in range(n_attributes)])
+        if sample not in data:
+            data.append(sample)
+        # if sample not in data_tree:
+        #    data_tree.insert(sample)
+        #    data.append(sample)
+
+
+    return data
+
+
+def build_train_and_test_set(n_attributes, n_values, train_size, test_size) -> list[tuple], list[tuple):
+    """
+    Returns a train and test set by sampling the data
+    samples can be repeated in the training set but not in the testing set
+    """
+    test_set = build_test_set(n_attributes, n_values, size=test_size)
+
+    # i think this can be sped up a lot using a tree
+    # data_tree = as_tree(data)
+
+    train_set = []
+    for _ in range(train_size):
+        sample = tuple([random.randint(n_values) for _ in range(n_attributes)])
+        if sample not in test_set:
+            train_set.append(sample)
+        # if sample not in test_set_tree:
+        #    test_set_tree.insert(sample)
+        #    train_set.append(sample)
+
+    return train_set, test_set
+
 
 
 class ScaledDataset:
