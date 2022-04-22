@@ -6,7 +6,7 @@
 import copy
 import itertools
 import random
-import treelib
+from egg.zoo.compo_vs_generalization.bst import BinarySearchTree
 
 import torch
 
@@ -128,57 +128,60 @@ def build_test_set(n_attributes, n_values, size):
     """
     Samples {size} elements from the dataset, with no possible repeat
     """
-    max_size = 10e8  # TODO: find better value for this empirically
+    max_size = 10e6  # TODO: find better value for this empirically
     if size > max_size:
         print(f"Warning : trying to build a test set of size greater than {max_size} which might take a long time")
 
-    # i think this can be sped up a lot using a tree
-    # data_tree = as_tree(data)
+    # keep data in a tree for faster lookup
+    data_tree = BinarySearchTree()
 
     data = []
     i = 0
     while i < size:
         sample = tuple([random.randint(0, n_values-1) for _ in range(n_attributes)])
-        if sample not in data:
-            data.append(sample)
-            i += 1
-        # if sample not in data_tree:
-        #    data_tree.insert(sample)
-        #    data.append(sample)
+        if sample not in data_tree:
+           data_tree.insert(sample)
+           data.append(sample)
+           i += 1
+        else:
+            print('sample already in validation set')
 
+    assert len(data) == len(set(data)), "Found duplicates in test set"
 
     return data
 
 
 def build_datasets(n_attributes, n_values, train_size, test_size, validation_size):
     """
-    Returns a train and test set by sampling the data
-    samples can be repeated in the training set but not in the testing set
+    Returns the train, test and validation sets by sampling the data.
+    Samples can be repeated in the training set but not in the testing set
     Also there is no overlap between train and test set.
     """
-    # TODO: faire un test pour s'assurer que 
-    # le dataset va être construit relativement
-    # vite (size << input space)
-    # create a test and validation set simultaneously to prevent repeats
+    # prevent infinite loops
+    assert test_size < train_size and validation_size < train_size, 
+      "please set the --train_size option to be (much) larger than test and validation sizes."
+
+    # create test and validation sets simultaneously to prevent repeats
     all_test_data = build_test_set(n_attributes, n_values, size=test_size+validation_size)
     test_set = all_test_data[:test_size]
     validation_set = all_test_data[test_size:]
 
-    # i think this can be sped up a lot using a tree
-    # data_tree = as_tree(data)
+    # build tree to speed up the search
+    test_set_tree = BinarySearchTree()
+    for sample in test_set:
+        test_set_tree.insert(sample)
 
     train_set = []
     i = 0
     while i < train_size:
         sample = tuple([random.randint(0, n_values-1) for _ in range(n_attributes)])
-        if sample not in all_test_data:
-            train_set.append(sample)
-            i += 1
-        # if sample not in test_set_tree:
-        #    test_set_tree.insert(sample)
-        #    train_set.append(sample)
+        if sample not in test_set_tree:
+           train_set.append(sample)
+           i += 1
 
-    print(len(train_set), len(test_set), len(validation_set))
+    for s in train_set:
+        assert s not in test_set, "Found overlap between train and test set"
+
     return train_set, test_set, validation_set
 
 
