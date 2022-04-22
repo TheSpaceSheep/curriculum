@@ -107,13 +107,13 @@ def get_params(params):
     parser.add_argument(
         "--test_size",
         type=int,
-        default="1000",
+        default="500",
         help="Size of the testing set",
     )
     parser.add_argument(
         "--validation_size",
         type=int,
-        default="1000",
+        default="500",
         help="Size of the validation set",
     )
     parser.add_argument(
