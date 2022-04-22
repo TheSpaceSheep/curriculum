@@ -143,8 +143,6 @@ def build_test_set(n_attributes, n_values, size):
            data_tree.insert(sample)
            data.append(sample)
            i += 1
-        else:
-            print('sample already in validation set')
 
     assert len(data) == len(set(data)), "Found duplicates in test set"
 
