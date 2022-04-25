@@ -119,6 +119,11 @@ def get_params(params):
         type=int,
         default=714783,
         help="Random seed for data generation",
+        )
+    parser.add_argument(
+        "--curriculum",
+        action="store_true",
+        help="Learn according to a curriculum",
     )
 
 
@@ -357,18 +362,35 @@ def main(params):
     holdout_evaluator = Evaluator(loaders, opts.device, freq=0)
     early_stopper = EarlyStopperAccuracy(opts.early_stopping_thr, validation=True)
 
-    trainer = core.Trainer(
-        game=game,
-        optimizer=optimizer,
-        train_data=train_loader,
-        validation_data=validation_loader,
-        callbacks=[
-            core.ConsoleLogger(as_json=True, print_train_loss=False),
-            early_stopper,
-            metrics_evaluator,
-            holdout_evaluator,
-        ],
-    )
+    if opts.curriculum:
+        trainer = core.CurriculumTrainer(
+            game=game,
+            optimizer=optimizer,
+            train_data=train_loader,
+            validation_data=validation_loader,
+            callbacks=[
+                core.ConsoleLogger(as_json=True, print_train_loss=False),
+                early_stopper,
+                metrics_evaluator,
+                holdout_evaluator,
+            ],
+            curriculum = None,
+            n_attributes = opts.n_attributes,
+            n_values = opts.n_values,
+        )
+    else:
+        trainer = core.Trainer(
+            game=game,
+            optimizer=optimizer,
+            train_data=train_loader,
+            validation_data=validation_loader,
+            callbacks=[
+                core.ConsoleLogger(as_json=True, print_train_loss=False),
+                early_stopper,
+                metrics_evaluator,
+                holdout_evaluator,
+            ],
+        )
     trainer.train(n_epochs=opts.n_epochs)
 
     last_epoch_interaction = early_stopper.validation_stats[-1][1]
