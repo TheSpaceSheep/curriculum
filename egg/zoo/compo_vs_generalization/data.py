@@ -127,9 +127,9 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
 def build_random_dataset(n_attributes: int,
                          n_values: int,
                          size: int,
-                         data_to_exclude: set=set(),
+                         data_to_exclude: set=None,
                          allow_duplicates: bool=False,
-                         rng=None
+                         rng: torch.Generator=None
                          ) -> list:
     """
     Samples {size} elements from the input space, 
@@ -137,6 +137,9 @@ def build_random_dataset(n_attributes: int,
     """
     if n_values**n_attributes / size < 10e4 and allow_duplicates:
         print(f"Warning : Building a dataset that probably contains duplicates")
+
+    if data_to_exclude is None:
+        data_to_exclude = set()
 
     # use a list if duplicates are allowed (uses less memory than set)
     data = list() if allow_duplicates else set()
@@ -156,7 +159,7 @@ def build_datasets(n_attributes: int,
                    train_size: int,
                    test_size: int,
                    validation_size: int,
-                   rng=None) -> Tuple[List, List, List]:
+                   rng: torch.Generator=None) -> Tuple[List, List, List]:
     """
     Returns the train, test and validation sets by sampling the data.
     Samples can be repeated in the training set but not in the testing set
