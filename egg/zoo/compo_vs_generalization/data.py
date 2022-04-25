@@ -145,7 +145,7 @@ def build_random_dataset(n_attributes: int,
     data = list() if allow_duplicates else set()
     
     while len(data) < size:
-        sample = tuple(torch.randint(n_values-1, size=(n_attributes,), generator=rng).tolist())
+        sample = tuple(torch.randint(n_values, size=(n_attributes,), generator=rng).tolist())
         if sample not in data_to_exclude:
             if allow_duplicates:
                 data.append(sample)
