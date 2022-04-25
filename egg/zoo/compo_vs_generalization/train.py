@@ -117,7 +117,7 @@ def get_params(params):
     parser.add_argument(
         "--data_seed",
         type=int,
-        default=0,
+        default=714783,
         help="Random seed for data generation",
     )
 
@@ -233,6 +233,7 @@ def main(params):
     print(opts)
 
     if opts.build_full_dataset:
+        print("WARNING, using deprecated code")
         full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
         if opts.density_data > 0:
             sampled_data = select_subset_V2(
@@ -271,20 +272,16 @@ def main(params):
                            opts.validation_size,
                            rng=rng)
 
-        uniform_holdout = test
-
-        print(train[0], train[2], train[18])
-        
-        train, validation, uniform_holdout = [
+        train, validation, test = [
             one_hotify(x, opts.n_attributes, opts.n_values)
-            for x in [train, validation, uniform_holdout]
+            for x in [train, validation, test]
         ]
 
         train = ScaledDataset(train, opts.data_scaler)
         validation = ScaledDataset(validation, 1)
-        uniform_holdout = ScaledDataset(uniform_holdout)
+        test = ScaledDataset(test)
 
-        uniform_holdout_loader = DataLoader(uniform_holdout, batch_size=opts.batch_size)
+        test_loader = DataLoader(test, batch_size=opts.batch_size)
 
 
     train_loader = DataLoader(train, batch_size=opts.batch_size)
@@ -349,17 +346,10 @@ def main(params):
     )
 
     loaders = []
-    #    loaders.append(
-    #        (
-    #            "generalization hold out",
-    #            generalization_holdout_loader,
-    #            DiffLoss(opts.n_attributes, opts.n_values, generalization=True),
-    #        )
-    #    )
     loaders.append(
         (
-            "uniform holdout",
-            uniform_holdout_loader,
+            "test set",
+            test_loader,
             DiffLoss(opts.n_attributes, opts.n_values),
         )
     )
@@ -384,7 +374,7 @@ def main(params):
     last_epoch_interaction = early_stopper.validation_stats[-1][1]
     validation_acc = last_epoch_interaction.aux["acc"].mean()
 
-    uniformtest_acc = holdout_evaluator.results["uniform holdout"]["acc"]
+    test_acc = holdout_evaluator.results["test set"]["acc"]
 
     # Train new agents
     if validation_acc > 0.99:

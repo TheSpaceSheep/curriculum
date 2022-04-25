@@ -177,7 +177,7 @@ def build_datasets(n_attributes: int,
     train_set = build_random_dataset(n_attributes,
             n_values,
             size=train_size,
-            data_to_exclude=set(test_set),
+            data_to_exclude=all_test_data,
             allow_duplicates=False,  # it might be necessary to change this for very large datasets
             rng=rng
             )
