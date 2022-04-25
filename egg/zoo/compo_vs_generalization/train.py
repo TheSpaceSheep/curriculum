@@ -92,7 +92,7 @@ def get_params(params):
         help="Whether the messages are variable or fixed length",
     )
     parser.add_argument(
-        "--full_data",
+        "--build_full_dataset",
         action="store_true",
         help="Construct full dataset in memory (can fail on large input spaces!)",
     )
@@ -105,14 +105,20 @@ def get_params(params):
     parser.add_argument(
         "--test_size",
         type=int,
-        default="500",
+        default="1000",
         help="Size of the testing set",
     )
     parser.add_argument(
         "--validation_size",
         type=int,
-        default="500",
+        default="1000",
         help="Size of the validation set",
+    )
+    parser.add_argument(
+        "--data_seed",
+        type=int,
+        default=0,
+        help="Random seed for data generation",
     )
 
 
@@ -226,7 +232,7 @@ def main(params):
     device = opts.device
     print(opts)
 
-    if opts.full_data:
+    if opts.build_full_dataset:
         full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
         if opts.density_data > 0:
             sampled_data = select_subset_V2(
@@ -255,10 +261,19 @@ def main(params):
         ]
 
     else:
+        rng = torch.Generator()
+        rng.manual_seed(opts.data_seed)
         train, test, validation = \
-            build_datasets(opts.n_attributes, opts.n_values, opts.train_size, opts.test_size, opts.validation_size)
+            build_datasets(opts.n_attributes, 
+                           opts.n_values,
+                           opts.train_size,
+                           opts.test_size,
+                           opts.validation_size,
+                           rng=rng)
 
         uniform_holdout = test
+
+        print(train[0], train[2], train[18])
         
         train, validation, uniform_holdout = [
             one_hotify(x, opts.n_attributes, opts.n_values)

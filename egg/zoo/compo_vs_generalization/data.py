@@ -6,7 +6,7 @@
 import copy
 import itertools
 import random
-from egg.zoo.compo_vs_generalization.bst import BinarySearchTree
+from typing import Tuple, List
 
 import torch
 
@@ -124,61 +124,60 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
     return train, test
 
 
-def build_test_set(n_attributes, n_values, size):
+def build_random_dataset(n_attributes: int,
+                         n_values: int,
+                         size: int,
+                         data_to_exclude: set=set(),
+                         allow_duplicates: bool=False,
+                         rng=None
+                         ) -> list:
     """
-    Samples {size} elements from the dataset, with no possible repeat
+    Samples {size} elements from the input space, 
+    with no overlap with the set {data_to_exclude},
     """
-    max_size = 10e6  # TODO: find better value for this empirically
-    if size > max_size:
-        print(f"Warning : trying to build a test set of size greater than {max_size} which might take a long time")
+    if n_values**n_attributes / size < 10e4 and allow_duplicates:
+        print(f"Warning : Building a dataset that probably contains duplicates")
 
-    # keep data in a tree for faster lookup
-    data_tree = BinarySearchTree()
+    # use a list if duplicates are allowed (uses less memory than set)
+    data = list() if allow_duplicates else set()
+    
+    while len(data) < size:
+        sample = tuple(torch.randint(n_values-1, size=(n_attributes,), generator=rng).tolist())
+        if sample not in data_to_exclude:
+            if allow_duplicates:
+                data.append(sample)
+            else:
+                data.add(sample)
 
-    data = []
-    i = 0
-    while i < size:
-        sample = tuple([random.randint(0, n_values-1) for _ in range(n_attributes)])
-        if sample not in data_tree:
-           data_tree.insert(sample)
-           data.append(sample)
-           i += 1
+    return list(data)
 
-    assert len(data) == len(set(data)), "Found duplicates in test set"
-
-    return data
-
-
-def build_datasets(n_attributes, n_values, train_size, test_size, validation_size):
+def build_datasets(n_attributes: int,
+                   n_values: int,
+                   train_size: int,
+                   test_size: int,
+                   validation_size: int,
+                   rng=None) -> Tuple[List, List, List]:
     """
     Returns the train, test and validation sets by sampling the data.
     Samples can be repeated in the training set but not in the testing set
     Also there is no overlap between train and test set.
     """
-    # prevent infinite loops
-    assert test_size < train_size and validation_size < train_size, 
-      "please set the --train_size option to be (much) larger than test and validation sizes."
-
     # create test and validation sets simultaneously to prevent repeats
-    all_test_data = build_test_set(n_attributes, n_values, size=test_size+validation_size)
+    all_test_data = build_random_dataset(n_attributes,
+            n_values, 
+            size=test_size+validation_size,
+            allow_duplicates=False,
+            rng=rng)
     test_set = all_test_data[:test_size]
     validation_set = all_test_data[test_size:]
 
-    # build tree to speed up the search
-    test_set_tree = BinarySearchTree()
-    for sample in test_set:
-        test_set_tree.insert(sample)
-
-    train_set = []
-    i = 0
-    while i < train_size:
-        sample = tuple([random.randint(0, n_values-1) for _ in range(n_attributes)])
-        if sample not in test_set_tree:
-           train_set.append(sample)
-           i += 1
-
-    for s in train_set:
-        assert s not in test_set, "Found overlap between train and test set"
+    train_set = build_random_dataset(n_attributes,
+            n_values,
+            size=train_size,
+            data_to_exclude=set(test_set),
+            allow_duplicates=False,  # it might be necessary to change this for very large datasets
+            rng=rng
+            )
 
     return train_set, test_set, validation_set
 
