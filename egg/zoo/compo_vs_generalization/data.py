@@ -199,6 +199,20 @@ class ScaledDataset:
         return self.examples[k], torch.zeros(1)
 
 
+def mask_attributes(batch, idx, n_attributes, n_values):
+    """
+    batch: data to mask (already one-hotified)
+    idx: indices of attributes to mask
+    """
+    assert (idx < n_attributes).all(), "some indices are greater than the number of attributes"
+    mask = torch.ones((n_attributes,))
+    mask[idx] = 0.
+    mask = mask.repeat_interleave(n_values)  # [a, b] -> [a, ... a, b, ... b]
+    
+    masked_batch = batch * mask
+    return masked_batch
+
+
 if __name__ == "__main__":
     dataset = enumerate_attribute_value(n_attributes=2, n_values=10)
     train, holdout = split_holdout(dataset)
