@@ -67,7 +67,7 @@ def select_subset_V2(data, n_subset, n_attributes, n_values, random_seed=7):
     return sampled_data
 
 
-def one_hotify(data, n_attributes, n_values):
+def one_hotify(data: List[Tuple[int]], n_attributes: int, n_values: int) -> List[torch.Tensor]:
     """
     Params:
         data: list of tuples of length n_attributes
@@ -130,7 +130,7 @@ def build_random_dataset(n_attributes: int,
                          data_to_exclude: set=None,
                          allow_duplicates: bool=False,
                          rng: torch.Generator=None
-                         ) -> list:
+                         ) -> List[Tuple[int]]:
     """
     Samples {size} elements from the input space, 
     with no overlap with the set {data_to_exclude},
@@ -159,7 +159,7 @@ def build_datasets(n_attributes: int,
                    train_size: int,
                    test_size: int,
                    validation_size: int,
-                   rng: torch.Generator=None) -> Tuple[List, List, List]:
+                   rng: torch.Generator=None) -> Tuple[List[Tuple[int]], List[Tuple[int]], List[Tuple[int]]]:
     """
     Returns the train, test and validation sets by sampling the data.
     Samples can be repeated in the training set but not in the testing set
