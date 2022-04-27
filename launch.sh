@@ -13,5 +13,5 @@ source /shared/apps/anaconda3/etc/profile.d/conda.sh
 conda activate egg36
 
 # launch your computation
-python -m egg.zoo.compo_vs_generalization.train --n_epochs=2 --n_attributes=10 --n_values=4 --vocab_size=20 --max_len=20 --batch_size=5120 --sender_cell=lstm --receiver_cell=lstm --random_seed=1 --data_scaler=1  --train_size=500 --test_size=30 --validation_size=30 --curriculum
+python -m egg.zoo.compo_vs_generalization.train --n_epochs=1000 --n_attributes=10 --n_values=10 --vocab_size=100 --max_len=40 --batch_size=5120 --sender_cell=lstm --receiver_cell=lstm --random_seed=38401 --data_scaler=1  --train_size=1000000 --test_size=1000 --validation_size=1000 --curriculum
 # python -m egg.zoo.compo_vs_generalization.data
