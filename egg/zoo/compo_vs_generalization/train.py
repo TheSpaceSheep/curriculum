@@ -32,6 +32,8 @@ from egg.zoo.compo_vs_generalization.data import (
 )
 from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
+from egg.zoo.compo_vs_generalization.curriculum_trainer import CurriculumTrainer
+
 
 def get_params(params):
     parser = argparse.ArgumentParser()
@@ -235,7 +237,7 @@ def main(params):
 
     opts = get_params(params)
     device = opts.device
-    print(opts)
+    print(opts, flush=True)
 
     if opts.build_full_dataset:
         print("WARNING, using deprecated code")
@@ -363,7 +365,7 @@ def main(params):
     early_stopper = EarlyStopperAccuracy(opts.early_stopping_thr, validation=True)
 
     if opts.curriculum:
-        trainer = core.CurriculumTrainer(
+        trainer = CurriculumTrainer(
             game=game,
             optimizer=optimizer,
             train_data=train_loader,
@@ -374,7 +376,8 @@ def main(params):
                 metrics_evaluator,
                 holdout_evaluator,
             ],
-            curriculum = None,
+            curriculum_rule="acc_threshold",  # fixed number of steps ? scheduler ?
+            next_task_threshold=0.9,
             n_attributes = opts.n_attributes,
             n_values = opts.n_values,
         )

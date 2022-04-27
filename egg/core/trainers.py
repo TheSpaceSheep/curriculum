@@ -199,6 +199,13 @@ class Trainer:
 
         return mean_loss.item(), full_interaction
 
+    def transform_batch(self, batch):
+        """
+        Child classes have the possibility of applying a transform
+        to the batch, such as masking, e.g. for curriculum training.
+        """
+        return batch
+
     def train_epoch(self):
         mean_loss = 0
         n_batches = 0
@@ -212,6 +219,8 @@ class Trainer:
             if not isinstance(batch, Batch):
                 batch = Batch(*batch)
             batch = batch.to(self.device)
+
+            batch = self.transform_batch(batch)
 
             context = autocast() if self.scaler else nullcontext()
             with context:

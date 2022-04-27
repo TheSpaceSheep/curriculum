@@ -49,7 +49,7 @@ from .reinforce_wrappers import (
     TransformerSenderReinforce,
 )
 from .rnn import RnnEncoder
-from .trainers import Trainer, CurriculumTrainer
+from .trainers import Trainer
 from .util import (
     build_optimizer,
     close,

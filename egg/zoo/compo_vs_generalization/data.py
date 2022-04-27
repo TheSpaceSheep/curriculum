@@ -199,7 +199,7 @@ class ScaledDataset:
         return self.examples[k], torch.zeros(1)
 
 
-def mask_attributes(batch, idx, n_attributes, n_values):
+def mask_attributes(sender_input, idx, n_attributes, n_values):
     """
     batch: data to mask (already one-hotified)
     idx: indices of attributes to mask
@@ -209,8 +209,8 @@ def mask_attributes(batch, idx, n_attributes, n_values):
     mask[idx] = 0.
     mask = mask.repeat_interleave(n_values)  # [a, b] -> [a, ... a, b, ... b]
     
-    masked_batch = batch * mask
-    return masked_batch
+    masked_input = sender_input * mask
+    return masked_input
 
 
 if __name__ == "__main__":
