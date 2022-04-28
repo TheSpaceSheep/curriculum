@@ -332,3 +332,4 @@ class Trainer:
 
         if latest_file is not None:
             self.load_from_checkpoint(latest_file)
+

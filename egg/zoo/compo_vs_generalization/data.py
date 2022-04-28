@@ -6,11 +6,15 @@
 import copy
 import itertools
 import random
+from typing import Tuple, List
 
 import torch
 
 
 def enumerate_attribute_value(n_attributes, n_values):
+    """
+    Returns the ENTIRE dataset (not suitable for very large input spaces)
+    """
     iters = [range(n_values) for _ in range(n_attributes)]
 
     return list(itertools.product(*iters))
@@ -63,7 +67,7 @@ def select_subset_V2(data, n_subset, n_attributes, n_values, random_seed=7):
     return sampled_data
 
 
-def one_hotify(data, n_attributes, n_values):
+def one_hotify(data: List[Tuple[int]], n_attributes: int, n_values: int) -> List[torch.Tensor]:
     """
     Params:
         data: list of tuples of length n_attributes
@@ -118,6 +122,68 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
     assert len(train) + len(test) == len(dataset)
 
     return train, test
+
+
+def build_random_dataset(n_attributes: int,
+                         n_values: int,
+                         size: int,
+                         data_to_exclude: set=None,
+                         allow_duplicates: bool=False,
+                         rng: torch.Generator=None
+                         ) -> List[Tuple[int]]:
+    """
+    Samples {size} elements from the input space, 
+    with no overlap with the set {data_to_exclude},
+    """
+    if n_values**n_attributes / size < 10e4 and allow_duplicates:
+        print(f"Warning : Building a dataset that probably contains duplicates")
+
+    if data_to_exclude is None:
+        data_to_exclude = set()
+
+    # use a list if duplicates are allowed (uses less memory than set)
+    data = list() if allow_duplicates else set()
+    
+    while len(data) < size:
+        sample = tuple(torch.randint(n_values, size=(n_attributes,), generator=rng).tolist())
+        if sample not in data_to_exclude:
+            if allow_duplicates:
+                data.append(sample)
+            else:
+                data.add(sample)
+
+    return list(data)
+
+def build_datasets(n_attributes: int,
+                   n_values: int,
+                   train_size: int,
+                   test_size: int,
+                   validation_size: int,
+                   rng: torch.Generator=None) -> Tuple[List[Tuple[int]], List[Tuple[int]], List[Tuple[int]]]:
+    """
+    Returns the train, test and validation sets by sampling the data.
+    Samples can be repeated in the training set but not in the testing set
+    Also there is no overlap between train and test set.
+    """
+    # create test and validation sets simultaneously to prevent repeats
+    all_test_data = build_random_dataset(n_attributes,
+            n_values, 
+            size=test_size+validation_size,
+            allow_duplicates=False,
+            rng=rng)
+    test_set = all_test_data[:test_size]
+    validation_set = all_test_data[test_size:]
+
+    train_set = build_random_dataset(n_attributes,
+            n_values,
+            size=train_size,
+            data_to_exclude=all_test_data,
+            allow_duplicates=False,  # it might be necessary to change this for very large datasets
+            rng=rng
+            )
+
+    return train_set, test_set, validation_set
+
 
 
 class ScaledDataset:
