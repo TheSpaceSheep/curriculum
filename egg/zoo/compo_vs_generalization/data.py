@@ -200,15 +200,15 @@ class ScaledDataset:
 
 def mask_attributes(sender_input, idx, n_attributes, n_values):
     """
-    batch: data to mask (already one-hotified)
+    sender_input: data to mask (already one-hotified)
     idx: indices of attributes to mask
     """
-    assert (idx < n_attributes).all(), "some indices are greater than the number of attributes"
     mask = torch.ones((n_attributes,))
     mask[idx] = 0.
     mask = mask.repeat_interleave(n_values)  # [a, b] -> [a, ... a, b, ... b]
     
     masked_input = sender_input * mask
+
     return masked_input
 
 

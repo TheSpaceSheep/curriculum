@@ -33,6 +33,7 @@ from egg.zoo.compo_vs_generalization.data import (
 from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
 from egg.zoo.compo_vs_generalization.curriculum_trainer import CurriculumTrainer
+from egg.zoo.compo_vs_generalization.curriculum_games import MaskingGame
 
 
 def get_params(params):
@@ -331,7 +332,9 @@ def main(params):
         "builtin": core.baselines.BuiltInBaseline,
     }[opts.baseline]
 
-    game = core.SenderReceiverRnnReinforce(
+    game = MaskingGame(
+        opts.n_attributes,
+        opts.n_values,
         sender,
         receiver,
         loss,
@@ -377,8 +380,6 @@ def main(params):
             ],
             curriculum_rule="acc_threshold",  # fixed number of steps ? scheduler ?
             next_task_threshold=0.9,
-            n_attributes = opts.n_attributes,
-            n_values = opts.n_values,
         )
     else:
         trainer = core.Trainer(
@@ -426,6 +427,8 @@ def main(params):
                 loss,
                 sender_entropy_coeff=0.0,
                 receiver_entropy_coeff=0.0,
+                n_attributes = opts.n_attributes,
+                n_values = opts.n_values,
             )
             optimizer = torch.optim.Adam(receiver.parameters(), lr=opts.lr)
             early_stopper = EarlyStopperAccuracy(
@@ -513,3 +516,4 @@ if __name__ == "__main__":
     import sys
 
     main(sys.argv[1:])
+
