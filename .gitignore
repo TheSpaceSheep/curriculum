@@ -6,7 +6,11 @@ __pycache__/
 # vim swap and session files
 *.swp
 *.swo
+*.swn
 *.vim
+
+# launch script
+run.sh
 
 
 data/
