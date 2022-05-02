@@ -106,13 +106,13 @@ def get_params(params):
     parser.add_argument(
         "--test_size",
         type=int,
-        default="500",
+        default="1000",
         help="Size of the testing set",
     )
     parser.add_argument(
         "--validation_size",
         type=int,
-        default="500",
+        default="1000",
         help="Size of the validation set",
     )
     parser.add_argument(
@@ -139,10 +139,9 @@ def main(params):
 
     opts = get_params(params)
     device = opts.device
-    print(opts, flush=True)
+    print(opts)
 
     if opts.build_full_dataset:
-        print("WARNING, using deprecated code")
         print("Building full dataset...")
         full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
         if opts.density_data > 0:
