@@ -25,7 +25,6 @@ from .callbacks import (
     ConsoleLogger,
     TensorboardLogger,
 )
-from egg.zoo.compo_vs_generalization.data import mask_attributes
 
 from .distributed import get_preemptive_checkpoint_dir
 from .interaction import Interaction

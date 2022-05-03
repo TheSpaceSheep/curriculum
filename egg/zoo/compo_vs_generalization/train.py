@@ -126,6 +126,12 @@ def get_params(params):
         action="store_true",
         help="Learn according to a curriculum",
     )
+    parser.add_argument(
+        "--acc_threshold",
+        type=float,
+        default=0.7,
+        help="Accuracy to reach before augmenting the curriculum level",
+    )
 
 
     args = core.init(arg_parser=parser, params=params)
@@ -142,33 +148,29 @@ def main(params):
     print(opts)
 
     if opts.build_full_dataset:
-        print("Building full dataset...")
+        print(f"Building full dataset of size \
+                {opts.n_attributes ** opts.n_values}...", end="")
         full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
-        if opts.density_data > 0:
-            sampled_data = select_subset_V2(
-                full_data, opts.density_data, opts.n_attributes, opts.n_values
-            )
-            full_data = copy.deepcopy(sampled_data)
 
-        train, test = split_train_test(full_data, 0.1)
+        train, test_data = split_train_test(full_data, 0.2)
+        test, validation = split_train_test(test_data, 0.5)
 
-        train, test, full_data = [
+        train, test, validation, full_data = [
             one_hotify(x, opts.n_attributes, opts.n_values)
-            for x in [train, test, full_data]
+            for x in [train, test, validation, full_data]
         ]
 
-        train, validation = ScaledDataset(train, 1), ScaledDataset(train, 1)
-
+        train, validation = ScaledDataset(train, 1), ScaledDataset(validation, 1)
         test, full_data = ScaledDataset(test, 1), ScaledDataset(full_data, 1)
-        
         full_data_loader = DataLoader(full_data, batch_size=opts.batch_size)
+        print(" - done")
 
     else:
         rng = torch.Generator()
         rng.manual_seed(opts.data_seed)
-        print(f"Building train, test and validation sets     \
+        print(f"Building train, test and validation sets    \ 
                of size {opts.train_size}, {opts.test_size}, \
-               and {opts.validation_size}")
+               and {opts.validation_size}...", end="")
         train, test, validation = \
             build_datasets(opts.n_attributes, 
                            opts.n_values,
@@ -185,6 +187,7 @@ def main(params):
         train = ScaledDataset(train, opts.data_scaler)
         validation = ScaledDataset(validation, 1)
         test = ScaledDataset(test, 1)
+        print(" - done")
 
 
     test_loader = DataLoader(test, batch_size=opts.batch_size)
@@ -229,9 +232,8 @@ def main(params):
 
     if opts.curriculum:
         loss = MaskedLoss(opts.n_attributes, opts.n_values)
-        game = GraduallyRevealAttributes(
-            opts.n_attributes,
-            opts.n_values,
+        
+        referential_game = SenderReceiverRnnReinforce(
             sender,
             receiver,
             loss,
@@ -240,6 +242,12 @@ def main(params):
             length_cost=0.0,
             baseline_type=baseline,
         )
+        game = GraduallyRevealAttributes(
+                referential_game,
+                opts.n_attributes,
+                opts.n_values
+                mode='random'
+            )
     else:
         loss = DiffLoss(opts.n_attributes, opts.n_values)
         game = core.SenderReceiverRnnReinforce(
@@ -284,7 +292,7 @@ def main(params):
                 metrics_evaluator,
                 holdout_evaluator,
             ],
-            acc_threshold=0.7,
+            acc_threshold=opts.acc_threshold,
         )
     else:
         trainer = core.Trainer(

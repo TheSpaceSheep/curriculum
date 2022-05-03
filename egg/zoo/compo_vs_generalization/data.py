@@ -198,33 +198,24 @@ class ScaledDataset:
         return self.examples[k], torch.zeros(1)
 
 
-def mask_attributes(sender_input, idx, n_attributes, n_values, remove_masked_data=False):
+def mask_attributes(sender_input, idxs_to_mask, n_attributes, n_values, remove_masked_data=False):
     """
     sender_input: data to mask (already one-hotified)| (batch_size, n_attributes*n_values)
-    idx: indices of attributes to mask               | (batch_size, any)
+    idxs_to_mask: indices of attributes to mask      | (batch_size, < n_attributes)
     remove_masked_data: if set to True, data masked will not only be set to 0 but will
                         be removed entirely from the tensor.
     """
-    assert sender_input.shape[0] == idx.shape[0], \
-        f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idx.shape[0]})"
+    assert sender_input.shape[0] == idxs_to_mask.shape[0], \
+        f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_mask.shape[0]})"
     batch_size = sender_input.shape[0]
-    masks = []
-    masked_rows = []
-    for i in range(batch_size):
-        mask = torch.ones((n_attributes,))
-        mask[idx[i]] = 0.
-        mask = mask.repeat_interleave(n_values)  # [a, b] -> [a, ... a, b, ... b]
-
-        if remove_masked_data:
-            masked_rows.append(sender_input[i][mask==1])
-        else:
-            masks.append(mask)
+    mask = torch.ones((batch_size, n_attributes))
+    mask = mask.scatter(dim=1, index=idxs_to_mask, src=torch.zeros_like(idxs_to_mask, dtype=torch.float32))
+    mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
     
     if remove_masked_data:
-        masked_input = torch.stack(masked_rows)
+        masked_input = sender_input[mask==1].view(batch_size, -1)
     else:
-        batch_mask = torch.stack(masks)
-        masked_input = sender_input * batch_mask
+        masked_input = sender_input*mask
 
     return masked_input
 

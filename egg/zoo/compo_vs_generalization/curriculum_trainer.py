@@ -5,7 +5,7 @@ class CurriculumTrainer(Trainer):
     def __init__(
         self,
         *args,
-        acc_threshold: int=0.99,
+        acc_threshold: float=0.99,
         **kwargs,
     ):
         """

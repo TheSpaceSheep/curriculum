@@ -109,7 +109,6 @@ class MaskedLoss(torch.nn.Module):
         super().__init__()
         self.n_attributes = n_attributes
         self.n_values = n_values
-        self.mask_idx = None  # will be set by the game when processing a batch
 
     def forward(
         self,
@@ -121,14 +120,15 @@ class MaskedLoss(torch.nn.Module):
         _aux_input,
     ):
         batch_size = sender_input.size(0)
+        idxs_to_mask = _aux_input['idxs_to_mask']
 
         masked_input = mask_attributes(sender_input,
-                self.mask_idx,
+                idxs_to_mask,
                 self.n_attributes,
                 self.n_values,
                 remove_masked_data=True)
         masked_output = mask_attributes(receiver_output,
-                self.mask_idx,
+                idxs_to_mask,
                 self.n_attributes,
                 self.n_values,
                 remove_masked_data=True)
@@ -140,6 +140,9 @@ class MaskedLoss(torch.nn.Module):
                 batch_size, -1, self.n_values
             )
 
+        # acc : (batch_size,) tensor containing
+        # 1 where the vectors were perfectly
+        # reconstructed by the receiver, 0 elsewhere.
         acc = (
             torch.sum(
                 (
@@ -149,9 +152,17 @@ class MaskedLoss(torch.nn.Module):
             )
             == masked_input.shape[1]
         ).float()
+
+        # acc_or : (batch_size, n_attributes-n_masks) tensor
+        # containing 1 where an attribute was
+        # correctly reconstructed by the receiver,
+        # (even if the vector as a whole is not
+        # perfectly reconstructed), 0 elsewhere.
         acc_or = (
             masked_output.argmax(dim=-1) == masked_input.argmax(dim=-1)
         ).float()
+        # taking the mean of acc (resp. acc_or) gives the average accuracy
+        # of vector reconstruction (resp. attribute reconstruction)
 
         masked_output = masked_output.view(
             -1, self.n_values

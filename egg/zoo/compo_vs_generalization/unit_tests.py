@@ -56,7 +56,7 @@ def test_mask_attributes():
     assert hard_masked_input.shape == torch.Size([batch_size, (n_attributes-n_masked_attributes)*n_values])
 
     # verify that the first index has been masked
-    assert masked_input[0, idx[0][0]*n_values:(idx[0][0]+1)*v_values ] == torch.tensor([0, 0, 0])
+    assert (masked_input[0, idx[0][0]*n_values:(idx[0][0]+1)*n_values ] == torch.tensor([0, 0, 0])).all()
 
     print("--- Tests for mask_attributes successfully passed ---")
 
