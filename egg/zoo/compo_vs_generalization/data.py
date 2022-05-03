@@ -209,7 +209,7 @@ def mask_attributes(sender_input, idxs_to_mask, n_attributes, n_values, remove_m
         f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_mask.shape[0]})"
     batch_size = sender_input.shape[0]
     mask = torch.ones((batch_size, n_attributes))
-    mask = mask.scatter(dim=1, index=idxs_to_mask, src=torch.zeros_like(idxs_to_mask, dtype=torch.float32))
+    mask = mask.scatter(dim=1, index=idxs_to_mask, value=0)
     mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
     
     if remove_masked_data:

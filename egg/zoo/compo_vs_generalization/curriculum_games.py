@@ -28,45 +28,44 @@ class CurriculumGameWrapper(nn.Module):
 
 class GraduallyRevealAttributes(CurriculumGameWrapper):
     """
-    In this game wrapper, all attributes are masked except the first {curriculum level} ones.
-    At first, only the first (leftmost) attribute is visible, then at each curriculum update,
-    the next attribute is revealed, until all attributes are visible.
+    In this game wrapper, all attributes are masked except {n_unmasked} of them.
+    The position of unmasked attributes can be either random if {mode} is 
+    'random', or at the left if {mode} is 'from_left_to_right'.
+    During training, more attributes are gradually revealed as n_unmasked
+    augments.
     """
     def __init__(self,
             game: SenderReceiverRnnReinforce,
             n_attributes: int,
             n_values: int,
             mode: str
-            initial_n_unmasked_idxs: int=1
+            initial_n_unmasked: int=1
         ):
         valid_modes = ['left_to_right', 'random']
         if mode not in valid_modes:
-            raise ValueError(f"Invalid mode {mode}. mode should be"
-                              "either 'left_to_right' or 'random'")
+            raise ValueError(f"Invalid mode {mode}. mode should be in {valid_modes}")
         super().__init__(game)
         self.n_attributes = n_attributes
         self.n_values = n_values
         self.mode = mode
-        self.n_unmasked_idxs = initial_n_unmasked_idxs
+        self.n_unmasked = initial_n_unmasked
 
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
 
         if self.mode = 'left_to_right':
-            idxs_to_mask = torch.arange(self.n_unmasked_idxs, self.n_attributes), dtype=torch.long).to(sender_input.device)
+            idxs_to_mask = torch.arange(self.n_unmasked, self.n_attributes), dtype=torch.long).to(sender_input.device)
             idxs_to_mask = idxs_to_mask.expand(batch_size, idxs_to_mask.shape[0])
         elif self.mode = 'random':
             mask_probability = torch.ones((batch_size, self.n_attributes))/self.n_attributes
             idxs_to_mask = torch.multinomial(mask_probability,
-                    self.n_attributes - self.n_values,
+                    self.n_attributes - self.n_unmasked,
                     replacement=False)
 
-
-        # mask all attributes except the first {curriculum_level} ones.
         sender_input = mask_attributes(sender_input, idxs_to_mask, self.n_attributes, self.n_values)
 
-        # adapt loss function to the current mask
+        # pass indices to mask to the loss function through aux_input
         if aux_input is None:
             aux_input = {}
         aux_input['idxs_to_mask'] = idxs_to_mask
@@ -79,7 +78,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         """
         Increments the number of revealed indices
         """
-        if self.n_unmasked_idxs < self.n_attributes:
-            self.n_unmasked_idxs += 1
-            print('Curriculum level : ', self.n_unmasked_idxs)
+        if self.n_unmasked < self.n_attributes:
+            self.n_unmasked += 1
+            print('Curriculum level : ', self.n_unmasked)
 

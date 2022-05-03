@@ -95,7 +95,8 @@ def get_params(params):
     parser.add_argument(
         "--build_full_dataset",
         action="store_true",
-        help="Construct full dataset in memory (can fail on large input spaces!)",
+        help="Construct full dataset in memory "
+             "(can fail on large input spaces!)",
     )
     parser.add_argument(
         "--train_size",
@@ -131,6 +132,13 @@ def get_params(params):
         type=float,
         default=0.7,
         help="Accuracy to reach before augmenting the curriculum level",
+    )
+    parser.add_argument(
+        "--initial_n_unmasked",
+        type=int,
+        default=1,
+        help="Number of unmasked attributes at the start of "
+             "the curriculum training."
     )
 
 
@@ -232,33 +240,29 @@ def main(params):
 
     if opts.curriculum:
         loss = MaskedLoss(opts.n_attributes, opts.n_values)
-        
-        referential_game = SenderReceiverRnnReinforce(
-            sender,
-            receiver,
-            loss,
-            sender_entropy_coeff=opts.sender_entropy_coeff,
-            receiver_entropy_coeff=0.0,
-            length_cost=0.0,
-            baseline_type=baseline,
-        )
-        game = GraduallyRevealAttributes(
-                referential_game,
-                opts.n_attributes,
-                opts.n_values
-                mode='random'
-            )
     else:
         loss = DiffLoss(opts.n_attributes, opts.n_values)
-        game = core.SenderReceiverRnnReinforce(
-            sender,
-            receiver,
-            loss,
-            sender_entropy_coeff=opts.sender_entropy_coeff,
-            receiver_entropy_coeff=0.0,
-            length_cost=0.0,
-            baseline_type=baseline,
-        )
+
+    game = core.SenderReceiverRnnReinforce(
+        sender,
+        receiver,
+        loss,
+        sender_entropy_coeff=opts.sender_entropy_coeff,
+        receiver_entropy_coeff=0.0,
+        length_cost=0.0,
+        baseline_type=baseline,
+    )
+
+    if opts.curriculum:
+        # wrap game
+        game = GraduallyRevealAttributes(
+                game,
+                opts.n_attributes,
+                opts.n_values
+                mode='random',
+                initial_n_unmasked=opts.initial_n_unmasked
+            )
+
     optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr)
 
     metrics_evaluator = Metrics(
