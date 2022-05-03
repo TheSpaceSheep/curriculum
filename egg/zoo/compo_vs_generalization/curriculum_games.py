@@ -1,5 +1,6 @@
 import torch
-from abc import abstracmethod
+import torch.nn as nn
+from abc import abstractmethod
 from egg.core.reinforce_wrappers import SenderReceiverRnnReinforce
 from egg.zoo.compo_vs_generalization.data import mask_attributes
 from egg.zoo.compo_vs_generalization.losses import MaskedLoss
@@ -11,6 +12,7 @@ class CurriculumGameWrapper(nn.Module):
     as well as implement an update_curriculum_level method.
     """
     def __init__(self, game: SenderReceiverRnnReinforce):
+        super().__init__()
         self.game = game
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
@@ -38,12 +40,13 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             game: SenderReceiverRnnReinforce,
             n_attributes: int,
             n_values: int,
-            mode: str
+            mode: str,
             initial_n_unmasked: int=1
         ):
         valid_modes = ['left_to_right', 'random']
         if mode not in valid_modes:
             raise ValueError(f"Invalid mode {mode}. mode should be in {valid_modes}")
+
         super().__init__(game)
         self.n_attributes = n_attributes
         self.n_values = n_values
@@ -54,10 +57,10 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
 
-        if self.mode = 'left_to_right':
-            idxs_to_mask = torch.arange(self.n_unmasked, self.n_attributes), dtype=torch.long).to(sender_input.device)
+        if self.mode == 'left_to_right':
+            idxs_to_mask = torch.arange(self.n_unmasked, self.n_attributes, dtype=torch.long).to(sender_input.device)
             idxs_to_mask = idxs_to_mask.expand(batch_size, idxs_to_mask.shape[0])
-        elif self.mode = 'random':
+        elif self.mode == 'random':
             mask_probability = torch.ones((batch_size, self.n_attributes))/self.n_attributes
             idxs_to_mask = torch.multinomial(mask_probability,
                     self.n_attributes - self.n_unmasked,
@@ -71,7 +74,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         aux_input['idxs_to_mask'] = idxs_to_mask
 
 
-        return self.game(sender_input, labels, receiver_input=None, aux_input=None)
+        return self.game(sender_input, labels, receiver_input=None, aux_input=aux_input)
     
 
     def update_curriculum_level(self):

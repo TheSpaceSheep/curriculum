@@ -176,9 +176,9 @@ def main(params):
     else:
         rng = torch.Generator()
         rng.manual_seed(opts.data_seed)
-        print(f"Building train, test and validation sets    \ 
-               of size {opts.train_size}, {opts.test_size}, \
-               and {opts.validation_size}...", end="")
+        print(f"Building train, test and validation sets "
+               "of size {opts.train_size}, {opts.test_size}, "
+               "and {opts.validation_size}...", end="")
         train, test, validation = \
             build_datasets(opts.n_attributes, 
                            opts.n_values,
@@ -258,7 +258,7 @@ def main(params):
         game = GraduallyRevealAttributes(
                 game,
                 opts.n_attributes,
-                opts.n_values
+                opts.n_values,
                 mode='random',
                 initial_n_unmasked=opts.initial_n_unmasked
             )
