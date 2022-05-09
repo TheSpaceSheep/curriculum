@@ -58,7 +58,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         batch_size = sender_input.shape[0]
 
         if self.mode == 'left_to_right':
-            idxs_to_mask = torch.arange(self.n_unmasked, self.n_attributes, dtype=torch.long).to(sender_input.device)
+            idxs_to_mask = torch.arange(self.n_unmasked, self.n_attributes, dtype=torch.long)
             idxs_to_mask = idxs_to_mask.expand(batch_size, idxs_to_mask.shape[0])
         elif self.mode == 'random':
             mask_probability = torch.ones((batch_size, self.n_attributes))/self.n_attributes
@@ -66,6 +66,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                     self.n_attributes - self.n_unmasked,
                     replacement=False)
 
+        idxs_to_mask = idxs_to_mask.to(sender_input.device)
         sender_input = mask_attributes(sender_input, idxs_to_mask, self.n_attributes, self.n_values)
 
         # pass indices to mask to the loss function through aux_input
