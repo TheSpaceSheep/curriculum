@@ -156,8 +156,8 @@ def main(params):
     print(opts)
 
     if opts.build_full_dataset:
-        print(f"Building full dataset of size \
-                {opts.n_attributes ** opts.n_values}...", end="")
+        print("Building full dataset of size "
+              f"{opts.n_attributes ** opts.n_values}...", end="")
         full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
 
         train, test_data = split_train_test(full_data, 0.2)
@@ -176,9 +176,9 @@ def main(params):
     else:
         rng = torch.Generator()
         rng.manual_seed(opts.data_seed)
-        print(f"Building train, test and validation sets "
-               "of size {opts.train_size}, {opts.test_size}, "
-               "and {opts.validation_size}...", end="")
+        print("Building train, test and validation sets "
+             f"of size {opts.train_size}, {opts.test_size}, "
+             f"and {opts.validation_size}...", end="")
         train, test, validation = \
             build_datasets(opts.n_attributes, 
                            opts.n_values,
@@ -192,7 +192,7 @@ def main(params):
             for x in [train, validation, test]
         ]
 
-        train = ScaledDataset(train, opts.data_scaler)
+        train = ScaledDataset(train, 1)
         validation = ScaledDataset(validation, 1)
         test = ScaledDataset(test, 1)
         print(" - done")
@@ -310,6 +310,9 @@ def main(params):
                 holdout_evaluator,
             ],
         )
+
+    print("Beginning training")
+
     trainer.train(n_epochs=opts.n_epochs)
 
     print("---End--")
