@@ -32,19 +32,22 @@ def plot_file(file):
     }
             
     for line in file.readlines():
+        params_line = ""
         if line[:9] == 'Namespace':
             params_line = line
+            print(params_line)
         if line[0] == '{':
             line_dict = json.loads(line)
             for key in line_dict:
-                if key in results:
+                if key in results and 'entropy' not in key and 'length' not in key:
                     results[key].append(line_dict[key])
     for key in results:
-        plt.plot(results[key])
-        plt.xlabel("epoch")
-        plt.ylabel(key)
-        plt.title(parse_params_line(params_line))
-        plt.show()
+        if 'entropy' not in key and 'length' not in key:
+            plt.plot(results[key])
+            plt.xlabel("epoch")
+            plt.ylabel(key)
+            plt.title(parse_params_line(params_line))
+            plt.show()
 
 
 

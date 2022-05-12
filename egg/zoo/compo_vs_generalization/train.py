@@ -140,6 +140,12 @@ def get_params(params):
         help="Number of unmasked attributes at the start of "
              "the curriculum training."
     )
+    parser.add_argument(
+        "--masking_mode",
+        type=int,
+        default="random",
+        help="How to mask the attributes"
+    )
 
 
     args = core.init(arg_parser=parser, params=params)
@@ -259,7 +265,7 @@ def main(params):
                 game,
                 opts.n_attributes,
                 opts.n_values,
-                mode='random',
+                mode=opts.mode,
                 initial_n_unmasked=opts.initial_n_unmasked
             )
 
