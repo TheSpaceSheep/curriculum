@@ -26,6 +26,18 @@ class CurriculumGameWrapper(nn.Module):
         """
         pass
 
+    def __getattr__(self, attrname):
+        """
+        Lifting attributes :
+        Attributes of wrapper.game can be accessed as if
+        they were attributes of wrapper
+        """
+        try:
+            return super().__getattr__(attrname)
+        except AttributeError:
+            return getattr(self.game, attrname)
+            
+
 
 
 class GraduallyRevealAttributes(CurriculumGameWrapper):
@@ -62,9 +74,16 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             idxs_to_mask = idxs_to_mask.expand(batch_size, idxs_to_mask.shape[0])
         elif self.mode == 'random':
             mask_probability = torch.ones((batch_size, self.n_attributes))/self.n_attributes
-            idxs_to_mask = torch.multinomial(mask_probability,
-                    self.n_attributes - self.n_unmasked,
-                    replacement=False)
+            n_masks = self.n_attributes - self.n_unmasked
+            # multinomial throws an error when we try to sample 0 elements
+            # so we manually specify an empty idxs
+            print(n_masks)
+            if n_masks == 0:
+                idxs_to_mask = torch.tensor([])
+            else:
+                idxs_to_mask = torch.multinomial(mask_probability,
+                        self.n_attributes - self.n_unmasked,
+                        replacement=False)
 
         idxs_to_mask = idxs_to_mask.to(sender_input.device)
         sender_input = mask_attributes(sender_input, idxs_to_mask, self.n_attributes, self.n_values)
