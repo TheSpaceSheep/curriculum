@@ -55,7 +55,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             mode: str,
             initial_n_unmasked: int=1
         ):
-        # TODO: redefine game.sender and game.receiver to accept 1 more value ("MASKED")
         # TODO: modify loss function to take into account this masked attribute
         valid_modes = ['left_to_right', 'random']
         if mode not in valid_modes:

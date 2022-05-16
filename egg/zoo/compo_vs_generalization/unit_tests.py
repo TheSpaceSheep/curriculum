@@ -20,13 +20,19 @@ def test_mask_attributes():
                        10,
                        10,
                        rng=torch.Generator())
+    train_ = train
 
     train = one_hotify(train, n_attributes, n_values)
+    train_ = one_hotify(train_, n_attributes, n_values+1)
 
     train = ScaledDataset(train, 1)
+    train_ = ScaledDataset(train_, 1)
+
     train = torch.utils.data.DataLoader(train, batch_size=batch_size)
+    train_ = torch.utils.data.DataLoader(train_, batch_size=batch_size)
 
     sender_input = next(iter(train))[0]
+    sender_input_ = next(iter(train_))[0]
 
     # create a batch of random indices
     idx = []
@@ -44,19 +50,32 @@ def test_mask_attributes():
             n_values,
             remove_masked_data=True
         ) 
-    print(idx.shape)
+    # mask input and remove masked data
+    masked_with_last_value_input = mask_attributes(sender_input_, 
+            idx, 
+            n_attributes,
+            n_values+1,
+            mask_by_last_value=True
+        ) 
+    # print(idx.shape)
     print(idx)
-    print(masked_input.shape)
-    print(masked_input)
-    print(hard_masked_input.shape)
-    print(hard_masked_input)
+    # print(masked_input.shape)
+    # print(masked_input)
+    # print(hard_masked_input.shape)
+    # print(hard_masked_input)
+    print(masked_with_last_value_input.shape)
+    print(masked_with_last_value_input)
 
     assert idx.shape == torch.Size([batch_size, n_masked_attributes])
     assert masked_input.shape == torch.Size([batch_size, n_attributes*n_values])
     assert hard_masked_input.shape == torch.Size([batch_size, (n_attributes-n_masked_attributes)*n_values])
+    assert masked_with_last_value_input.shape == torch.Size([batch_size, n_attributes*(n_values+1)])
 
     # verify that the first index has been masked
     assert (masked_input[0, idx[0][0]*n_values:(idx[0][0]+1)*n_values ] == torch.tensor([0, 0, 0])).all()
+
+    # verify that the first index has been masked
+    assert (masked_with_last_value_input[0, idx[0][0]*(n_values+1):(idx[0][0]+1)*(n_values+1) ] == torch.tensor([0, 0, 0, 1])).all()
 
     print("--- Tests for mask_attributes successfully passed ---")
 

@@ -165,19 +165,8 @@ def main(params):
         print("Building full dataset of size "
               f"{opts.n_attributes ** opts.n_values}...", end="")
         full_data = enumerate_attribute_value(opts.n_attributes, opts.n_values)
-
         train, test_data = split_train_test(full_data, 0.2)
         test, validation = split_train_test(test_data, 0.5)
-
-        train, test, validation, full_data = [
-            one_hotify(x, opts.n_attributes, opts.n_values)
-            for x in [train, test, validation, full_data]
-        ]
-
-        train, validation = ScaledDataset(train, 1), ScaledDataset(validation, 1)
-        test, full_data = ScaledDataset(test, 1), ScaledDataset(full_data, 1)
-        full_data_loader = DataLoader(full_data, batch_size=opts.batch_size)
-        print(" - done")
 
     else:
         rng = torch.Generator()
@@ -193,15 +182,21 @@ def main(params):
                            opts.validation_size,
                            rng=rng)
 
-        train, validation, test = [
-            one_hotify(x, opts.n_attributes, opts.n_values)
-            for x in [train, validation, test]
-        ]
+    if opts.curriculum:
+        # From this line onwards, n_values is added
+        # one value that represents masking the 
+        # corresponding attribute
+        opts.n_values += 1
 
-        train = ScaledDataset(train, 1)
-        validation = ScaledDataset(validation, 1)
-        test = ScaledDataset(test, 1)
-        print(" - done")
+    train, validation, test = [
+        one_hotify(x, opts.n_attributes, opts.n_values)
+        for x in [train, validation, test]
+    ]
+
+    train = ScaledDataset(train, 1)
+    validation = ScaledDataset(validation, 1)
+    test = ScaledDataset(test, 1)
+    print(" - done")
 
 
     test_loader = DataLoader(test, batch_size=opts.batch_size)

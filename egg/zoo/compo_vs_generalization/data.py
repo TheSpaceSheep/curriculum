@@ -198,15 +198,22 @@ class ScaledDataset:
         return self.examples[k], torch.zeros(1)
 
 
-def mask_attributes(sender_input, idxs_to_mask, n_attributes, n_values, remove_masked_data=False):
+def mask_attributes(sender_input,
+        idxs_to_mask,
+        n_attributes,
+        n_values,
+        remove_masked_data=False,
+        mask_by_last_value=False):
     """
     sender_input: data to mask (already one-hotified)| (batch_size, n_attributes*n_values)
-    idxs_to_mask: indices of attributes to mask      | (batch_size, < n_attributes)
+    idxs_to_mask: indices of attributes to mask      | (batch_size, <= n_attributes)
     remove_masked_data: if set to True, data masked will not only be set to 0 but will
                         be removed entirely from the tensor.
     """
     assert sender_input.shape[0] == idxs_to_mask.shape[0], \
         f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_mask.shape[0]})"
+    assert not (remove_masked_data and mask_by_last_value), \
+        "The arguments remove_masked_data and mask_by_last_value are incompatible"
     batch_size = sender_input.shape[0]
     mask = torch.ones((batch_size, n_attributes), device=sender_input.device)
     mask = mask.scatter(dim=1, index=idxs_to_mask, value=0)
@@ -216,6 +223,11 @@ def mask_attributes(sender_input, idxs_to_mask, n_attributes, n_values, remove_m
         masked_input = sender_input[mask==1].view(batch_size, -1)
     else:
         masked_input = sender_input*mask
+        if mask_by_last_value:
+            add_mask = torch.zeros((batch_size, n_attributes*n_values)) 
+            idxs_to_one = (idxs_to_mask+1) * n_values - 1
+            add_mask = add_mask.scatter(dim=1, index=idxs_to_one, value=1)
+            masked_input += add_mask
 
     return masked_input
 
