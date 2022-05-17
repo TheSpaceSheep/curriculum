@@ -3,7 +3,7 @@ import torch.nn as nn
 from abc import abstractmethod
 from egg.core.reinforce_wrappers import SenderReceiverRnnReinforce
 from egg.zoo.compo_vs_generalization.data import mask_attributes
-from egg.zoo.compo_vs_generalization.losses import MaskedLoss
+from egg.zoo.compo_vs_generalization.losses import DiffLoss
 
 class CurriculumGameWrapper(nn.Module):
     """
@@ -78,7 +78,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             n_masks = self.n_attributes - self.n_unmasked
             # multinomial throws an error when we try to sample 0 elements
             # so we manually specify an empty idxs
-            print(n_masks)
             if n_masks == 0:
                 idxs_to_mask = torch.tensor([])
             else:

@@ -31,7 +31,7 @@ from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
 from egg.zoo.compo_vs_generalization.curriculum_trainer import CurriculumTrainer
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
-from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
+from egg.zoo.compo_vs_generalization.losses import DiffLoss
 
 
 def get_params(params):
@@ -142,7 +142,7 @@ def get_params(params):
     )
     parser.add_argument(
         "--masking_mode",
-        type=int,
+        type=str,
         default="random",
         help="How to mask the attributes"
     )
@@ -239,10 +239,7 @@ def main(params):
         "builtin": core.baselines.BuiltInBaseline,
     }[opts.baseline]
 
-    if opts.curriculum:
-        loss = MaskedLoss(opts.n_attributes, opts.n_values)
-    else:
-        loss = DiffLoss(opts.n_attributes, opts.n_values)
+    loss = DiffLoss(opts.n_attributes, opts.n_values)
 
     game = core.SenderReceiverRnnReinforce(
         sender,
@@ -260,7 +257,7 @@ def main(params):
                 game,
                 opts.n_attributes,
                 opts.n_values,
-                mode=opts.mode,
+                mode=opts.masking_mode,
                 initial_n_unmasked=opts.initial_n_unmasked
             )
 
