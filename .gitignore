@@ -8,10 +8,15 @@ __pycache__/
 *.swo
 *.swn
 *.vim
+*~
 
-# launch script
+# launch scripts
 run.sh
+*.sh
+*.json
 
+# result folders
+exp*
 
 data/
 .idea/
@@ -117,3 +122,5 @@ venv.bak/
 
 # vim
 *.vim
+
+run.sh

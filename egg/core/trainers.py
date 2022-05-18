@@ -25,6 +25,7 @@ from .callbacks import (
     ConsoleLogger,
     TensorboardLogger,
 )
+
 from .distributed import get_preemptive_checkpoint_dir
 from .interaction import Interaction
 from .util import get_opts, move_to
@@ -196,6 +197,7 @@ class Trainer:
         full_interaction = Interaction.from_iterable(interactions)
 
         return mean_loss.item(), full_interaction
+
 
     def train_epoch(self):
         mean_loss = 0
