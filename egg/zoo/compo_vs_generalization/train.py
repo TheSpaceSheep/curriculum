@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import argparse
+import sys
 import copy
 import json
 
@@ -142,7 +143,7 @@ def get_params(params):
     )
     parser.add_argument(
         "--masking_mode",
-        type=int,
+        type=str,
         default="random",
         help="How to mask the attributes"
     )
@@ -169,16 +170,6 @@ def main(params):
         train, test_data = split_train_test(full_data, 0.2)
         test, validation = split_train_test(test_data, 0.5)
 
-        train, test, validation, full_data = [
-            one_hotify(x, opts.n_attributes, opts.n_values)
-            for x in [train, test, validation, full_data]
-        ]
-
-        train, validation = ScaledDataset(train, 1), ScaledDataset(validation, 1)
-        test, full_data = ScaledDataset(test, 1), ScaledDataset(full_data, 1)
-        full_data_loader = DataLoader(full_data, batch_size=opts.batch_size)
-        print(" - done")
-
     else:
         rng = torch.Generator()
         rng.manual_seed(opts.data_seed)
@@ -193,15 +184,22 @@ def main(params):
                            opts.validation_size,
                            rng=rng)
 
-        train, validation, test = [
-            one_hotify(x, opts.n_attributes, opts.n_values)
-            for x in [train, validation, test]
-        ]
+    if opts.masking_mode == 'dedicated_value':
+        # From this line onwards, n_values is added
+        # one value that represents masking the 
+        # corresponding attribute
+        opts.n_values += 1
 
-        train = ScaledDataset(train, 1)
-        validation = ScaledDataset(validation, 1)
-        test = ScaledDataset(test, 1)
-        print(" - done")
+    
+    train, validation, test = [
+        one_hotify(x, opts.n_attributes, opts.n_values)
+        for x in [train, validation, test]
+    ]
+
+    train = ScaledDataset(train, 1)
+    validation = ScaledDataset(validation, 1)
+    test = ScaledDataset(test, 1)
+    print(" - done")
 
 
     test_loader = DataLoader(test, batch_size=opts.batch_size)
@@ -244,7 +242,7 @@ def main(params):
         "builtin": core.baselines.BuiltInBaseline,
     }[opts.baseline]
 
-    if opts.curriculum:
+    if opts.curriculum and opts.masking_mode != "dedicated_value":
         loss = MaskedLoss(opts.n_attributes, opts.n_values)
     else:
         loss = DiffLoss(opts.n_attributes, opts.n_values)
@@ -265,7 +263,7 @@ def main(params):
                 game,
                 opts.n_attributes,
                 opts.n_values,
-                mode=opts.mode,
+                mode=opts.masking_mode,
                 initial_n_unmasked=opts.initial_n_unmasked
             )
 
@@ -288,8 +286,18 @@ def main(params):
             DiffLoss(opts.n_attributes, opts.n_values),
         )
     )
+    loaders.append(
+        (
+            "validation set",
+            validation_loader,
+            DiffLoss(opts.n_attributes, opts.n_values),
+        )
+    )
 
     holdout_evaluator = Evaluator(loaders, opts.device, freq=0)
+    interaction_saver = core.InteractionSaver(
+            test_epochs=list(range(1, opts.n_epochs)),
+            checkpoint_dir=f"{sys.argv[1]}")
 
     if opts.curriculum:
         trainer = CurriculumTrainer(
@@ -301,6 +309,7 @@ def main(params):
                 core.ConsoleLogger(as_json=True, print_train_loss=False),
                 metrics_evaluator,
                 holdout_evaluator,
+                interaction_saver
             ],
             acc_threshold=opts.acc_threshold,
         )
@@ -314,6 +323,7 @@ def main(params):
                 core.ConsoleLogger(as_json=True, print_train_loss=False),
                 metrics_evaluator,
                 holdout_evaluator,
+                interaction_saver
             ],
         )
 

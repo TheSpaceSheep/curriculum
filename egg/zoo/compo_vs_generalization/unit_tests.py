@@ -44,19 +44,36 @@ def test_mask_attributes():
             n_values,
             remove_masked_data=True
         ) 
+
+    # mask input by last value
+    masked_with_last_value_input = mask_attributes(sender_input_,
+        idx,
+        n_attributes,
+        n_values+1,
+        mask_by_last_value=True
+    )
+
     print(idx.shape)
     print(idx)
     print(masked_input.shape)
     print(masked_input)
     print(hard_masked_input.shape)
     print(hard_masked_input)
+    print(masked_with_last_value.shape)
+    print(masked_with_last_value)
 
     assert idx.shape == torch.Size([batch_size, n_masked_attributes])
     assert masked_input.shape == torch.Size([batch_size, n_attributes*n_values])
     assert hard_masked_input.shape == torch.Size([batch_size, (n_attributes-n_masked_attributes)*n_values])
+    assert (masked_with_last_value_input[0, idx[0][0]*(n_values+1):(idx[0][0]+1)*(n_values+1) ] == torch.tensor([0, 0, 0, 1])).all()
+
 
     # verify that the first index has been masked
     assert (masked_input[0, idx[0][0]*n_values:(idx[0][0]+1)*n_values ] == torch.tensor([0, 0, 0])).all()
+
+    # same with input masked by last value
+    assert (masked_with_last_value_input[0, idx[0][0]*(n_values+1):(idx[0][0]+1)*(n_values+1) ] == torch.tensor([0, 0, 0, 1])).all()
+
 
     print("--- Tests for mask_attributes successfully passed ---")
 
