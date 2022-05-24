@@ -196,7 +196,7 @@ def main(params):
         for x in [train, validation, test]
     ]
 
-    train = ScaledDataset(train, 1)
+    train = ScaledDataset(train, opts.data_scaler)
     validation = ScaledDataset(validation, 1)
     test = ScaledDataset(test, 1)
     print(" - done")
