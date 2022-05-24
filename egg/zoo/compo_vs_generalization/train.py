@@ -296,7 +296,7 @@ def main(params):
 
     holdout_evaluator = Evaluator(loaders, opts.device, freq=0)
     interaction_saver = core.InteractionSaver(
-            test_epochs=list(range(1, opts.n_epochs)),
+            test_epochs=list(range(1, opts.n_epochs, opts.stats_freq)),
             checkpoint_dir=f"{sys.argv[1]}")
 
     if opts.curriculum:
