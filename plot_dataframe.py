@@ -14,8 +14,6 @@ RELEVANT_PARAMS = [
     "vocab_size",
     "max_len",
     "batch_size",
-    "sender_cell",
-    "receiver_cell",
     "train_size",
     "test_size",
     "validation_size",
@@ -27,7 +25,10 @@ RELEVANT_PARAMS = [
     "acc_threshold",
     "initial_n_unmasked",
     "data_seed",
-    "curriculum"
+    "curriculum",
+    "sender_entropy_coeff",
+    "baseline",
+    "masking_mode"
 ]
 
 RELEVANT_DATA = [
@@ -95,7 +96,7 @@ def parse_results_file(file):
         if line[:len('Namespace')] == 'Namespace':
             params_dict = parse_params_line(line)
             data = params_dict.copy()
-        if line[0] == '{':
+        if line.startswith('{'):
             line_dict = json.loads(line)
             data.update({
                 key:line_dict[key]
@@ -116,7 +117,6 @@ def build_dataframe(data_dir, log_file_extension=".out"):
                 all_df_lines += df_lines
 
     df = pd.DataFrame(all_df_lines)
-    df.set_index('epoch')
     return df
 
 
@@ -130,7 +130,8 @@ def plot_max_acc(df):
     acc_max = 0
     name_max = ""
     for name, group in to_plot:
-        new_acc = group['acc_or'].groupby('epoch').mean().max()
+        print(group)
+        new_acc = group.groupby(['epoch']).mean()['acc_or'].max()
         if new_acc > acc_max:
             acc_max = new_acc
             name_max = name
@@ -141,7 +142,7 @@ def plot_max_acc(df):
     plt.show()
 
 
-def plot_all_curves(df, param_to_plot='acc_or', title_params=None):
+def plot_across_seed(df, param_to_plot='acc_or', title_params=None):
     """
     Plot all curves of a sweep of experiments for the 
     parameter {param_to_plot}, which needs to be in
@@ -153,8 +154,9 @@ def plot_all_curves(df, param_to_plot='acc_or', title_params=None):
                          f"{RELEVANT_DATA}, not {param_to_plot}")
 
     to_plot = df.groupby([p for p in RELEVANT_PARAMS if p not in ("random_seed")])
-
+    acc_max = 0
     for i, (name, group) in enumerate(to_plot):
+        acc_max = max(acc_max, group['acc_or'].max())
         if i%10 == 0:
             if i != 0: plt.show()
             fig = plt.figure(figsize=(10, 5), dpi=120)
@@ -167,8 +169,24 @@ def plot_all_curves(df, param_to_plot='acc_or', title_params=None):
         ax.set_title(str(title).strip('{}'))
         sb.lineplot(x=group['epoch'], y=group['acc_or'], ci='sd')
 
+    plt.ylim([0, acc_max])
     plt.show()
 
+def plot_curriculum_result(df, param_to_plot='acc_or', title_params=None):
+    """
+    Plot all curves of a sweep of experiments for the 
+    parameter {param_to_plot}, which needs to be in
+    RELEVANT_DATA.
+    Diplays the curves by groups of ten.
+    """
+    if param_to_plot not in RELEVANT_DATA:
+        raise ValueError(f"Argument param_to_plot should be one of "
+                         f"{RELEVANT_DATA}, not {param_to_plot}")
+
+    acc_max = 0
+    sb.relplot(x=df['epoch'], y=df[param_to_plot], hue=df['acc_threshold'], data=df, col_wrap=5, col=df['random_seed'], kind='line')
+
+    plt.show()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -184,6 +202,7 @@ if __name__ == "__main__":
 
 
     df = build_dataframe(data_dir=data_dir, log_file_extension=log_file_extension)
+    # plot_all_curves(df, title_params=["acc_threshold"])
+    plot_curriculum_result(df)
     # plot_max_acc(df)
-    plot_all_curves(df, title_params=["lr", "batch_size", "vocab_size", "max_len"])
 

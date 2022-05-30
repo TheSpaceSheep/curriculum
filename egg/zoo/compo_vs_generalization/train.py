@@ -20,6 +20,7 @@ from egg.zoo.compo_vs_generalization.archs import (
     PlusOneWrapper,
     Receiver,
     Sender,
+    AttributeValueEmbedder
 )
 from egg.zoo.compo_vs_generalization.data import (
     ScaledDataset,
@@ -147,6 +148,12 @@ def get_params(params):
         default="random",
         help="How to mask the attributes"
     )
+    parser.add_argument(
+        "--entropy_coeff_factor",
+        type=float,
+        default=1.,
+        help="Scales sender_entropy_coeff at each curriculum step"
+    )
 
 
     args = core.init(arg_parser=parser, params=params)
@@ -195,6 +202,10 @@ def main(params):
         one_hotify(x, opts.n_attributes, opts.n_values)
         for x in [train, validation, test]
     ]
+    # train, validation, test = [
+    #         torch.tensor(x)
+    #         for x in [train, validation, test]
+    #     ]
 
     train = ScaledDataset(train, opts.data_scaler)
     validation = ScaledDataset(validation, 1)
@@ -221,7 +232,11 @@ def main(params):
         raise ValueError(f"Unknown receiver cell, {opts.receiver_cell}")
 
     if opts.sender_cell in ["lstm", "rnn", "gru"]:
-        sender = Sender(n_inputs=n_dim, n_hidden=opts.sender_hidden)
+        sender = Sender(
+                opts.n_attributes * opts.n_values,
+                opts.sender_hidden,
+            )
+        # sender = Sender(n_inputs=n_dim, n_hidden=opts.sender_hidden)
         sender = core.RnnSenderReinforce(
             agent=sender,
             vocab_size=opts.vocab_size,
@@ -252,6 +267,7 @@ def main(params):
         receiver,
         loss,
         sender_entropy_coeff=opts.sender_entropy_coeff,
+        entropy_coeff_factor=opts.entropy_coeff_factor,
         receiver_entropy_coeff=0.0,
         length_cost=0.0,
         baseline_type=baseline,

@@ -36,6 +36,7 @@ class CurriculumTrainer(Trainer):
 
         if acc_or > self.acc_threshold:
             self.game.update_curriculum_level()
+            self.game.sender_entropy_coeff *= self.game.entropy_coeff_factor
 
         return mean_loss, full_interaction
 
