@@ -142,36 +142,6 @@ def plot_max_acc(df):
     plt.show()
 
 
-def plot_across_seed(df, param_to_plot='acc_or', title_params=None):
-    """
-    Plot all curves of a sweep of experiments for the 
-    parameter {param_to_plot}, which needs to be in
-    RELEVANT_DATA.
-    Diplays the curves by groups of ten.
-    """
-    if param_to_plot not in RELEVANT_DATA:
-        raise ValueError(f"Argument param_to_plot should be one of "
-                         f"{RELEVANT_DATA}, not {param_to_plot}")
-
-    to_plot = df.groupby([p for p in RELEVANT_PARAMS if p not in ("random_seed")])
-    acc_max = 0
-    for i, (name, group) in enumerate(to_plot):
-        acc_max = max(acc_max, group['acc_or'].max())
-        if i%10 == 0:
-            if i != 0: plt.show()
-            fig = plt.figure(figsize=(10, 5), dpi=120)
-            plt.subplots_adjust(wspace=0.5,
-                                hspace=0.5)
-        print(name)
-        ax = fig.add_subplot(2, 5, i%10+1)
-        title_indices = [RELEVANT_PARAMS.index(x)-1 for x in title_params]
-        title = '\n'.join([f"{title_params[i]}: {name[title_indices[i]]}" for i in range(len(title_params))]) 
-        ax.set_title(str(title).strip('{}'))
-        sb.lineplot(x=group['epoch'], y=group['acc_or'], ci='sd')
-
-    plt.ylim([0, acc_max])
-    plt.show()
-
 def plot_curriculum_result(df, param_to_plot='acc_or', title_params=None):
     """
     Plot all curves of a sweep of experiments for the 
@@ -184,7 +154,13 @@ def plot_curriculum_result(df, param_to_plot='acc_or', title_params=None):
                          f"{RELEVANT_DATA}, not {param_to_plot}")
 
     acc_max = 0
-    sb.relplot(x=df['epoch'], y=df[param_to_plot], hue=df['acc_threshold'], data=df, col_wrap=5, col=df['random_seed'], kind='line')
+    sb.relplot(x=df['epoch'],
+            y=df[param_to_plot], hue=df['acc_threshold'],
+            data=df,
+            col_wrap=5,
+            col=df['random_seed'],
+            kind='line',
+            ci='sd')
 
     plt.show()
 
@@ -203,6 +179,15 @@ if __name__ == "__main__":
 
     df = build_dataframe(data_dir=data_dir, log_file_extension=log_file_extension)
     # plot_all_curves(df, title_params=["acc_threshold"])
-    plot_curriculum_result(df)
-    # plot_max_acc(df)
-
+    # plot_curriculum_result(df)
+    plot_max_acc(df)
+    sb.relplot(x=df['epoch'],
+               y=df['acc_or'],
+               hue=df['random_seed'],
+               data=df, 
+               col_wrap=2,
+               col=df['sender_entropy_coeff'],
+               kind='line',
+               palette='dark:b',
+               ci='sd')
+    plt.show()
