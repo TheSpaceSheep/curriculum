@@ -267,7 +267,6 @@ def main(params):
         receiver,
         loss,
         sender_entropy_coeff=opts.sender_entropy_coeff,
-        entropy_coeff_factor=opts.entropy_coeff_factor,
         receiver_entropy_coeff=0.0,
         length_cost=0.0,
         baseline_type=baseline,
@@ -280,7 +279,8 @@ def main(params):
                 opts.n_attributes,
                 opts.n_values,
                 mode=opts.masking_mode,
-                initial_n_unmasked=opts.initial_n_unmasked
+                initial_n_unmasked=opts.initial_n_unmasked,
+                entropy_coeff_factor=opts.entropy_coeff_factor
             )
 
     optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr)
