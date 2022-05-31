@@ -36,7 +36,8 @@ RELEVANT_DATA = [
     'acc_or',
     'sender_entropy',
     'length',
-    'epoch'
+    'epoch',
+    'mode'
 ]
 
 
@@ -158,11 +159,11 @@ if __name__ == "__main__":
 
     # plot_max_acc(df)
     sb.relplot(x=df['epoch'],
-               y=df[param_to_plot],
-               hue=df['sender_entropy_coeff'],
-               data=df, 
+               y=param_to_plot,
+               hue='sender_entropy_coeff',
+               data=df[df['mode']=='test'], 
                col_wrap=2,
-               col=df['initial_n_unmasked'],
+               col='initial_n_unmasked',
                kind='line',
                palette='dark:b',
                ci='sd')
