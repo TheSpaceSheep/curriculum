@@ -95,7 +95,7 @@ def parse_results_file(file):
         if line[:len('Namespace')] == 'Namespace':
             params_dict = parse_params_line(line)
             data = params_dict.copy()
-        if line[0] == '{':
+        if line.startswith('{'):
             line_dict = json.loads(line)
             data.update({
                 key:line_dict[key]
@@ -138,36 +138,6 @@ def plot_max_acc(df):
 
     sb.lineplot(x=to_plot.get_group(name_max)['epoch'], y=to_plot.get_group(name_max)['acc_or'], ci=None)
     plt.title(f"Best acc : {acc_max}")
-    plt.show()
-
-
-def plot_all_curves(df, param_to_plot='acc_or', title_params=None):
-    """
-    Plot all curves of a sweep of experiments for the 
-    parameter {param_to_plot}, which needs to be in
-    RELEVANT_DATA.
-    Diplays the curves by groups of ten.
-    """
-    if param_to_plot not in RELEVANT_DATA:
-        raise ValueError(f"Argument param_to_plot should be one of "
-                         f"{RELEVANT_DATA}, not {param_to_plot}")
-
-    to_plot = df.groupby([p for p in RELEVANT_PARAMS if p not in ("random_seed")])
-
-    for i, (name, group) in enumerate(to_plot):
-        if i%10 == 0:
-            if i != 0: plt.show()
-            fig = plt.figure(figsize=(10, 5), dpi=120)
-            plt.subplots_adjust(wspace=0.5,
-                                hspace=0.5)
-        print(name)
-        ax = fig.add_subplot(2, 5, i%10+1)
-        title_indices = [RELEVANT_PARAMS.index(x)-1 for x in title_params]
-        title = '\n'.join([f"{title_params[i]}: {name[title_indices[i]]}" for i in range(len(title_params))]) 
-        ax.set_title(str(title).strip('{}'))
-        sb.lineplot(x=group['epoch'], y=group['acc_or'], ci='sd')
-
-    plt.show()
 
 
 if __name__ == "__main__":
@@ -184,6 +154,17 @@ if __name__ == "__main__":
 
 
     df = build_dataframe(data_dir=data_dir, log_file_extension=log_file_extension)
-    # plot_max_acc(df)
-    plot_all_curves(df, title_params=["lr", "batch_size", "vocab_size", "max_len"])
+    sb.set_style('darkgrid')
 
+    # plot_max_acc(df)
+    sb.relplot(x=df['epoch'],
+               y=df[param_to_plot],
+               hue=df['sender_entropy_coeff'],
+               data=df, 
+               col_wrap=2,
+               col=df['initial_n_unmasked'],
+               kind='line',
+               palette='dark:b',
+               ci='sd')
+
+    plt.show()

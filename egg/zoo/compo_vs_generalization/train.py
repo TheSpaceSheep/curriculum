@@ -142,16 +142,21 @@ def get_params(params):
              "the curriculum training."
     )
     parser.add_argument(
-        "--masking_mode",
+        "--mask_positioning",
         type=str,
         default="random",
+        help="Where the masks are located"
+    )
+    parser.add_argument(
+        "--masking_mode",
+        type=str,
+        default="zero_out",
         help="How to mask the attributes"
     )
 
 
     args = core.init(arg_parser=parser, params=params)
     return args
-
 
 
 
@@ -185,14 +190,15 @@ def main(params):
                            rng=rng)
 
     if opts.masking_mode == 'dedicated_value':
-        # From this line onwards, n_values is added
-        # one value that represents masking the 
-        # corresponding attribute
-        opts.n_values += 1
+        # Add one value that represents masking 
+        # the corresponding attribute
+        tot_n_values = opts.n_values + 1
+    else:
+        tot_n_values = opts.n_values
 
     
     train, validation, test = [
-        one_hotify(x, opts.n_attributes, opts.n_values)
+        one_hotify(x, opts.n_attributes, tot_n_values)
         for x in [train, validation, test]
     ]
 
@@ -206,7 +212,7 @@ def main(params):
     train_loader = DataLoader(train, batch_size=opts.batch_size)
     validation_loader = DataLoader(validation, batch_size=len(validation))
 
-    n_dim = opts.n_attributes * opts.n_values
+    n_dim = opts.n_attributes * tot_n_values
 
     if opts.receiver_cell in ["lstm", "rnn", "gru"]:
         receiver = Receiver(n_hidden=opts.receiver_hidden, n_outputs=n_dim)
@@ -243,9 +249,9 @@ def main(params):
     }[opts.baseline]
 
     if opts.curriculum and opts.masking_mode != "dedicated_value":
-        loss = MaskedLoss(opts.n_attributes, opts.n_values)
+        loss = MaskedLoss(opts.n_attributes, tot_n_values)
     else:
-        loss = DiffLoss(opts.n_attributes, opts.n_values)
+        loss = DiffLoss(opts.n_attributes, tot_n_values)
 
     game = core.SenderReceiverRnnReinforce(
         sender,
@@ -262,8 +268,9 @@ def main(params):
         game = GraduallyRevealAttributes(
                 game,
                 opts.n_attributes,
-                opts.n_values,
-                mode=opts.masking_mode,
+                tot_n_values,
+                mask_positioning=opts.mask_positioning,
+                masking_mode=opts.masking_mode,
                 initial_n_unmasked=opts.initial_n_unmasked
             )
 
@@ -273,7 +280,7 @@ def main(params):
         validation.examples,
         opts.device,
         opts.n_attributes,
-        opts.n_values,
+        tot_n_values,
         opts.vocab_size + 1,
         freq=opts.stats_freq,
     )
@@ -283,14 +290,14 @@ def main(params):
         (
             "test set",
             test_loader,
-            DiffLoss(opts.n_attributes, opts.n_values),
+            DiffLoss(opts.n_attributes, tot_n_values),
         )
     )
     loaders.append(
         (
             "validation set",
             validation_loader,
-            DiffLoss(opts.n_attributes, opts.n_values),
+            DiffLoss(opts.n_attributes, tot_n_values),
         )
     )
 

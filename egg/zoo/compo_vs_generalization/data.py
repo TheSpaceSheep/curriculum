@@ -225,8 +225,13 @@ def mask_attributes(sender_input,
         masked_input = sender_input*mask
         if mask_by_last_value:
             add_mask = torch.zeros((batch_size, n_attributes*n_values), device=sender_input.device)
+
+            # indices of last values in the one hot vector,
+            # that should be set to one
             idxs_to_one = (idxs_to_mask+1) * n_values - 1
+
             add_mask = add_mask.scatter(dim=1, index=idxs_to_one, value=1)
+            masked_input += add_mask
 
     return masked_input
 
