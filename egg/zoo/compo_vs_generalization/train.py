@@ -224,6 +224,7 @@ def main(params):
 
     if opts.receiver_cell in ["lstm", "rnn", "gru"]:
         receiver = Receiver(n_hidden=opts.receiver_hidden, n_outputs=n_dim)
+        # TODO: impelement an impatient receiver !
         receiver = core.RnnReceiverDeterministic(
             receiver,
             opts.vocab_size + 1,
