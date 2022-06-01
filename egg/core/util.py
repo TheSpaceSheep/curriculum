@@ -226,6 +226,13 @@ def build_optimizer(params: Iterable) -> torch.optim.Optimizer:
     return optimizer(params, lr=get_opts().lr)
 
 
+def reset_optimizer_state(module: torch.nn.Module, optimizer: torch.optim.Optimizer):
+    opt_state_dict = optimizer.state_dict()
+    for name, _ in module.named_parameters():
+        opt_state_dict["state"][name] = []
+    optimizer.load_state_dict(opt_state_dict)
+
+
 def get_summary_writer() -> "torch.utils.SummaryWriter":
     """
     :return: Returns an initialized instance of torch.util.SummaryWriter

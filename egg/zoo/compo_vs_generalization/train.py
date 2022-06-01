@@ -33,6 +33,7 @@ from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 from egg.zoo.compo_vs_generalization.curriculum_trainer import CurriculumTrainer
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
 from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
+from egg.zoo.compo_vs_generalization.callbacks import CurriculumManager
 
 
 def get_params(params):
@@ -306,33 +307,24 @@ def main(params):
             test_epochs=list(range(1, opts.n_epochs, opts.stats_freq)),
             checkpoint_dir=f"{sys.argv[1]}")
 
+    callbacks=[
+        core.ConsoleLogger(as_json=True, print_train_loss=False),
+        metrics_evaluator,
+        holdout_evaluator,
+        interaction_saver,
+    ]
+
     if opts.curriculum:
-        trainer = CurriculumTrainer(
-            game=game,
-            optimizer=optimizer,
-            train_data=train_loader,
-            validation_data=validation_loader,
-            callbacks=[
-                core.ConsoleLogger(as_json=True, print_train_loss=True),
-                metrics_evaluator,
-                holdout_evaluator,
-                interaction_saver
-            ],
-            acc_threshold=opts.acc_threshold,
-        )
-    else:
-        trainer = core.Trainer(
-            game=game,
-            optimizer=optimizer,
-            train_data=train_loader,
-            validation_data=validation_loader,
-            callbacks=[
-                core.ConsoleLogger(as_json=True, print_train_loss=False),
-                metrics_evaluator,
-                holdout_evaluator,
-                interaction_saver
-            ],
-        )
+        curriculum_manager = CurriculumManager(game, optimizer)
+        callbacks.append(curriculum_manager)
+
+    trainer = core.Trainer(
+        game=game,
+        optimizer=optimizer,
+        train_data=train_loader,
+        validation_data=validation_loader,
+        callbacks=callbacks
+    )
 
     print("Beginning training")
 
