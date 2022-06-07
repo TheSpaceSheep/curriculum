@@ -438,7 +438,7 @@ class RnnReceiverImpatient(nn.Module):
 
         for step in range(n_rnn_steps):
             h_t = encoded[step,:,:]
-            step_logits = F.log_softmax(self.agent(h_t), dim=1)
+            step_logits = F.log_softmax(self.agent(h_t, input, aux_input), dim=1)
             distr = Categorical(logits=step_logits)
             entropy.append(distr.entropy())
 
