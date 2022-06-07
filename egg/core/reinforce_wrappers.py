@@ -413,6 +413,50 @@ class RnnReceiverDeterministic(nn.Module):
         return agent_output, logits, entropy
 
 
+class RnnReceiverImpatient(nn.Module):
+    """
+    Impatient Listener.
+    The wrapper logic feeds the message into the cell and calls the wrapped agent.
+    The wrapped agent has to returns the intermediate hidden states for every position.
+    All the hidden states are mapped to a categorical distribution by self.agent
+    The categorical probabilities (step_logits) will then be used to compute the Impatient loss function.
+    """
+
+    def __init__(self, agent, vocab_size, embed_dim, hidden_size, cell='rnn', num_layers=1):
+        super(RnnReceiverImpatient, self).__init__()
+
+        self.agent = agent
+        self.encoder = RnnEncoder(vocab_size, embed_dim, hidden_size, cell, num_layers, impatient=True)
+
+    def forward(self, message, input=None, aux_input=None, lengths=None):
+        encoded = self.encoder(message)
+        n_rnn_steps = encoded.shape[0]
+
+        sequence = []
+        logits = []
+        entropy = []
+
+        for step in range(n_rnn_steps):
+            h_t = encoded[step,:,:]
+            step_logits = F.log_softmax(self.agent(h_t), dim=1)
+            distr = Categorical(logits=step_logits)
+            entropy.append(distr.entropy())
+
+            if self.training:
+                x = distr.sample()
+            else:
+                x = step_logits.argmax(dim=1)
+            logits.append(distr.log_prob(x))
+            sequence.append(step_logits)
+
+        # put batch dim first
+        sequence = torch.stack(sequence).permute(1, 0, 2)
+        logits = torch.stack(logits).permute(1, 0)
+        entropy = torch.stack(entropy).permute(1, 0)
+
+        return sequence, logits, entropy
+
+
 class SenderReceiverRnnReinforce(nn.Module):
     """
     Implements Sender/Receiver game with training done via Reinforce. Both agents are supposed to
@@ -570,7 +614,7 @@ class CommunicationRnnReinforce(nn.Module):
         )
 
         # the entropy of the outputs of S before and including the eos symbol - as we don't care about what's after
-        effective_entropy_s = torch.zeros_like(entropy_r)
+        effective_entropy_s = torch.zeros((entropy_r.shape[0],))
 
         # the log prob of the choices made by S before and including the eos symbol - again, we don't
         # care about the rest

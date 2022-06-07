@@ -24,6 +24,7 @@ class RnnEncoder(nn.Module):
         n_hidden: int,
         cell: str = "rnn",
         num_layers: int = 1,
+        impatient: bool=False
     ) -> None:
         """
         Arguments:
@@ -36,6 +37,7 @@ class RnnEncoder(nn.Module):
             num_layers {int} -- Number of the stacked RNN layers (default: {1})
         """
         super(RnnEncoder, self).__init__()
+        self.impatient = impatient
 
         cell = cell.lower()
         cell_types = {"rnn": nn.RNN, "gru": nn.GRU, "lstm": nn.LSTM}
@@ -71,9 +73,15 @@ class RnnEncoder(nn.Module):
         packed = nn.utils.rnn.pack_padded_sequence(
             emb, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
-        _, rnn_hidden = self.cell(packed)
+        seq_hidden, rnn_hidden = self.cell(packed)
 
         if isinstance(self.cell, nn.LSTM):
+            print(rnn_hidden)
             rnn_hidden, _ = rnn_hidden
+            seq_hidden = seq_hidden.data
 
-        return rnn_hidden[-1]
+        if self.impatient:
+            return rnn_hidden
+        else:
+            return rnn_hidden[-1]
+

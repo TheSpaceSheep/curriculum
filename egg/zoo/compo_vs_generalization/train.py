@@ -165,6 +165,11 @@ def get_params(params):
         default="deterministic",
         help="Distribution to sample the number of attributes to reveal"
     )
+    parser.add_argument(
+        "--impatient",
+        action="store_true",
+        help="Learn according to a curriculum",
+    )
 
     args = core.init(arg_parser=parser, params=params)
     return args
@@ -222,10 +227,13 @@ def main(params):
 
     n_dim = opts.n_attributes * tot_n_values
 
-    if opts.receiver_cell in ["lstm", "rnn", "gru"]:
-        receiver = Receiver(n_hidden=opts.receiver_hidden, n_outputs=n_dim)
-        # TODO: impelement an impatient receiver !
-        receiver = core.RnnReceiverDeterministic(
+    if opts.receiver_cell not in ["lstm", "rnn", "gru"]:
+        raise ValueError(f"Unknown receiver cell, {opts.receiver_cell}")
+
+
+    receiver = Receiver(n_hidden=opts.receiver_hidden, n_outputs=n_dim)
+    if opts.impatient:
+        receiver = core.RnnReceiverImpatient(
             receiver,
             opts.vocab_size + 1,
             opts.receiver_emb,
@@ -233,7 +241,13 @@ def main(params):
             cell=opts.receiver_cell,
         )
     else:
-        raise ValueError(f"Unknown receiver cell, {opts.receiver_cell}")
+        receiver = core.RnnReceiverDeterministic(
+            receiver,
+            opts.vocab_size + 1,
+            opts.receiver_emb,
+            opts.receiver_hidden,
+            cell=opts.receiver_cell,
+        )
 
     if opts.sender_cell in ["lstm", "rnn", "gru"]:
         sender = Sender(n_inputs=n_dim, n_hidden=opts.sender_hidden)

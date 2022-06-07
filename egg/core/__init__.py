@@ -41,6 +41,7 @@ from .reinforce_wrappers import (
     ReinforceDeterministicWrapper,
     ReinforceWrapper,
     RnnReceiverDeterministic,
+    RnnReceiverImpatient,
     RnnReceiverReinforce,
     RnnSenderReinforce,
     SenderReceiverRnnReinforce,
