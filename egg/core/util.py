@@ -226,7 +226,10 @@ def build_optimizer(params: Iterable) -> torch.optim.Optimizer:
     return optimizer(params, lr=get_opts().lr)
 
 
-def reset_optimizer_state(module: torch.nn.Module, optimizer: torch.optim.Optimizer):
+def reset_optimizer_state(module: torch.nn.Module, optimizer: torch.optim.Optimizer) -> None:
+    """
+    Erase the parameters of {optimizer} associated to {module}
+    """
     opt_state_dict = optimizer.state_dict()
     for name, _ in module.named_parameters():
         opt_state_dict["state"][name] = []
