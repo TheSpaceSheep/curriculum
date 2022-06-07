@@ -313,7 +313,7 @@ def main(params):
             train_data=train_loader,
             validation_data=validation_loader,
             callbacks=[
-                core.ConsoleLogger(as_json=True, print_train_loss=False),
+                core.ConsoleLogger(as_json=True, print_train_loss=True),
                 metrics_evaluator,
                 holdout_evaluator,
                 interaction_saver
