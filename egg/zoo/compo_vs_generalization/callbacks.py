@@ -8,9 +8,9 @@ import numpy as np
 from typing import Optional
 
 
-class CurriculumManager(core.Callback):
+class CurriculumUpdater(core.Callback):
     """
-    Callback that manages the curriculum according to the following strategy :
+    Callback that updates the curriculum according to the following strategy :
         - After each epoch, check if the current task is considered completed
         - If so, call the game's update_curriculum_level method and reset 
           the optimizer's parameters

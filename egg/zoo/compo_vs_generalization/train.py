@@ -30,10 +30,9 @@ from egg.zoo.compo_vs_generalization.data import (
 )
 from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
-from egg.zoo.compo_vs_generalization.curriculum_trainer import CurriculumTrainer
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
 from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
-from egg.zoo.compo_vs_generalization.callbacks import CurriculumManager
+from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater
 
 
 def get_params(params):
@@ -315,7 +314,7 @@ def main(params):
     ]
 
     if opts.curriculum:
-        curriculum_manager = CurriculumManager(game, optimizer)
+        curriculum_manager = CurriculumUpdater(game, optimizer)
         callbacks.append(curriculum_manager)
 
     trainer = core.Trainer(
