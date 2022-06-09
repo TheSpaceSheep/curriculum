@@ -214,12 +214,19 @@ def mask_attributes(sender_input,
         f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_mask.shape[0]})"
     assert not (remove_masked_data and mask_by_last_value), \
         "The arguments remove_masked_data and mask_by_last_value are incompatible"
+
+    print(idxs_to_mask.shape)
+    print(idxs_to_mask)
     batch_size = sender_input.shape[0]
     mask = torch.ones((batch_size, n_attributes), device=sender_input.device)
     mask = mask.scatter(dim=1, index=idxs_to_mask, value=0)
     mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
+    print(mask.shape)
+    print(mask)
     
     if remove_masked_data:
+        print(sender_input.shape)
+        print(sender_input[mask==1].shape)
         masked_input = sender_input[mask==1].view(batch_size, -1)
     else:
         masked_input = sender_input*mask

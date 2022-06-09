@@ -26,6 +26,8 @@ RELEVANT_PARAMS = [
     "receiver_emb",
     "acc_threshold",
     "initial_n_unmasked",
+    "sender_entropy_coeff",
+    "plateau_threshold",
     "data_seed",
     "curriculum"
 ]
@@ -161,8 +163,9 @@ if __name__ == "__main__":
     sb.relplot(x='epoch',
                y='acc_or',
                data=df[df['mode']=='test'], 
-               col_wrap=2,
-               col='initial_n_unmasked',
+               row='plateau_threshold',
+               #col_wrap=3,
+               col='random_seed',
                kind='line',
                palette='dark:b',
                ci='sd')

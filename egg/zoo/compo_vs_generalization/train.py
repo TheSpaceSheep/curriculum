@@ -131,8 +131,14 @@ def get_params(params):
     parser.add_argument(
         "--acc_threshold",
         type=float,
-        default=0.7,
+        default=None,
         help="Accuracy to reach before augmenting the curriculum level",
+    )
+    parser.add_argument(
+        "--plateau_threshold",
+        type=float,
+        default=1e-4,
+        help="Threshold to reach before considering we are on an accuracy plateau",
     )
     parser.add_argument(
         "--initial_n_unmasked",
@@ -307,14 +313,18 @@ def main(params):
             checkpoint_dir=f"{sys.argv[1]}")
 
     callbacks=[
-        core.ConsoleLogger(as_json=True, print_train_loss=False),
+        core.ConsoleLogger(as_json=True, print_train_loss=True),
         metrics_evaluator,
         holdout_evaluator,
         interaction_saver,
     ]
 
     if opts.curriculum:
-        curriculum_manager = CurriculumUpdater(game, optimizer)
+        curriculum_manager = CurriculumUpdater(
+                game,
+                optimizer,
+                acc_threshold=opts.acc_threshold,
+                plateau_threshold=opts.plateau_threshold)
         callbacks.append(curriculum_manager)
 
     trainer = core.Trainer(
