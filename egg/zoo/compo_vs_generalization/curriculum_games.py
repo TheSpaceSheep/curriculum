@@ -38,8 +38,6 @@ class CurriculumGameWrapper(nn.Module):
             return getattr(self.game, attrname)
             
 
-
-
 class GraduallyRevealAttributes(CurriculumGameWrapper):
     """
     In this game wrapper, all attributes are masked except {n_unmasked} of them.
@@ -113,4 +111,5 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         if self.n_unmasked < self.n_attributes:
             self.n_unmasked += 1
             print('Curriculum level : ', self.n_unmasked)
+
 

@@ -158,9 +158,8 @@ if __name__ == "__main__":
     sb.set_style('darkgrid')
 
     # plot_max_acc(df)
-    sb.relplot(x=df['epoch'],
-               y=param_to_plot,
-               hue='sender_entropy_coeff',
+    sb.relplot(x='epoch',
+               y='acc_or',
                data=df[df['mode']=='test'], 
                col_wrap=2,
                col='initial_n_unmasked',
