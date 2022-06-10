@@ -199,27 +199,27 @@ class ScaledDataset:
 
 
 def mask_attributes(sender_input,
-        idxs_to_mask,
+        idxs_to_reveal,
         n_attributes,
         n_values,
         remove_masked_data=False,
         mask_by_last_value=False):
     """
     sender_input: data to mask (already one-hotified)| (batch_size, n_attributes*n_values)
-    idxs_to_mask: indices of attributes to mask      | (batch_size, < n_attributes)
+    idxs_to_reveal: indices of attributes to reveal  | (batch_size, < n_attributes)
     remove_masked_data: if set to True, data masked will not only be set to 0 but will
                         be removed entirely from the tensor.
     """
-    assert sender_input.shape[0] == idxs_to_mask.shape[0],  \
-        f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_mask.shape[0]})"
+    assert sender_input.shape[0] == idxs_to_reveal.shape[0],  \
+        f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_reveal.shape[0]})"
     assert not (remove_masked_data and mask_by_last_value), \
         "The arguments remove_masked_data and mask_by_last_value are incompatible"
 
-    print(idxs_to_mask.shape)
-    print(idxs_to_mask)
+    print(idxs_to_reveal.shape)
+    print(idxs_to_reveal)
     batch_size = sender_input.shape[0]
-    mask = torch.ones((batch_size, n_attributes), device=sender_input.device)
-    mask = mask.scatter(dim=1, index=idxs_to_mask, value=0)
+    mask = torch.zeros((batch_size, n_attributes), device=sender_input.device)
+    mask = mask.scatter(dim=1, index=idxs_to_reveal, value=1)
     mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
     print(mask.shape)
     print(mask)
@@ -232,6 +232,12 @@ def mask_attributes(sender_input,
         masked_input = sender_input*mask
         if mask_by_last_value:
             add_mask = torch.zeros((batch_size, n_attributes*n_values), device=sender_input.device)
+
+            idxs_to_mask = (torch.abs(masked_input.view(
+                    batch_size*n_attributes, n_values
+            )).sum(dim=1) == 0).long()
+            print(idxs_to_mask.shape)
+            print(idxs_to_mask)
 
             # indices of last values in the one hot vector,
             # that should be set to one
