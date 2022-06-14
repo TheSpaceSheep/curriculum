@@ -202,50 +202,41 @@ def mask_attributes(sender_input,
         idxs_to_reveal,
         n_attributes,
         n_values,
-        remove_masked_data=False,
         mask_by_last_value=False):
     """
     sender_input: data to mask (already one-hotified)| (batch_size, n_attributes*n_values)
     idxs_to_reveal: indices of attributes to reveal  | (batch_size, < n_attributes)
-    remove_masked_data: if set to True, data masked will not only be set to 0 but will
-                        be removed entirely from the tensor.
     """
     assert sender_input.shape[0] == idxs_to_reveal.shape[0],  \
         f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_reveal.shape[0]})"
-    assert not (remove_masked_data and mask_by_last_value), \
-        "The arguments remove_masked_data and mask_by_last_value are incompatible"
 
-    print(idxs_to_reveal.shape)
-    print(idxs_to_reveal)
     batch_size = sender_input.shape[0]
     mask = torch.zeros((batch_size, n_attributes), device=sender_input.device)
     mask = mask.scatter(dim=1, index=idxs_to_reveal, value=1)
     mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
-    print(mask.shape)
-    print(mask)
     
-    if remove_masked_data:
-        print(sender_input.shape)
-        print(sender_input[mask==1].shape)
-        masked_input = sender_input[mask==1].view(batch_size, -1)
-    else:
-        masked_input = sender_input*mask
-        if mask_by_last_value:
-            # this is broken for now
-            add_mask = torch.zeros((batch_size, n_attributes*n_values), device=sender_input.device)
+    masked_input = sender_input*mask
+    if mask_by_last_value:
+        # infer indices of masked attributes from masked_input
+        idxs_to_mask = (torch.abs(masked_input.view(
+                batch_size*n_attributes, n_values
+        )).sum(dim=1) == 0).nonzero()
 
-            idxs_to_mask = (torch.abs(masked_input.view(
-                    batch_size*n_attributes, n_values
-            )).sum(dim=1) == 0).long()
-            print(idxs_to_mask.shape)
-            print(idxs_to_mask)
+        # indices of last values in the one hot vector,
+        # that should be set to one
+        idxs_to_one = (idxs_to_mask+1) * n_values - 1
 
-            # indices of last values in the one hot vector,
-            # that should be set to one
-            idxs_to_one = (idxs_to_mask+1) * n_values - 1
-
-            add_mask = add_mask.scatter(dim=1, index=idxs_to_one, value=1)
-            masked_input += add_mask
+        add_mask = torch.zeros(
+            (batch_size*n_attributes*n_values),
+            device=sender_input.device
+        )
+        add_mask = add_mask.scatter(
+            dim=0, index=idxs_to_one, value=1
+        )
+        add_mask = add_mask.view(
+            batch_size, n_attributes*n_values
+        )
+        masked_input += add_mask
 
     return masked_input
 

@@ -93,8 +93,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         distr = torch.distributions.Categorical(probs)
         n_revealed = distr.sample()
         n_revealed += 1  # to prevent 0 revealed
-        print(n_revealed.shape)
-        print(n_revealed)
 
         if self.mask_positioning == 'left_to_right':
             idxs_to_reveal = torch.arange(self.curriculum_level, dtype=torch.long)
