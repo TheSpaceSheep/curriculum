@@ -181,30 +181,15 @@ class MaskedLoss(torch.nn.Module):
 
         # these labels are incorrect !
         labels = masked_input.argmax(dim=-1)
-        print(masked_output)
-        print(masked_input)
-        print(labels)
-        # labels = labels.scatter(dim=1, index=idxs_to_mask, value=-1)
-        # print(labels.shape)
-        # labels = labels[labels != -1]
-        # print(labels.shape)
-        # labels = labels.view(-1)
-        # print(labels.shape)
-
-        # sender_input = sender_input.view(
-        #         -1, self.n_values
-        # )
-        # receiver_output = receiver_output.view(
-        #         -1, self.n_values
-        # )
-
-        # labels = sender_input.argmax(dim=-1)
-        # labels = labels.view(-1)
 
         loss = (
             F.cross_entropy(masked_output, labels, reduction="none")
-            .mean(dim=-1)
         )
+        print(loss.shape)
+        idxs = [0]+list(n_revealed.cumsum(0))
+        loss = [loss[i1:i2].mean() for i1, i2 in zip(idxs[:-1], idxs[1:])]
+        loss = torch.tensor(loss, device=sender_input.device)
+        print(loss.shape)
 
         return loss, {"acc": acc, "acc_or": acc_or}
 

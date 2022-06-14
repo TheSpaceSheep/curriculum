@@ -231,6 +231,7 @@ def mask_attributes(sender_input,
     else:
         masked_input = sender_input*mask
         if mask_by_last_value:
+            # this is broken for now
             add_mask = torch.zeros((batch_size, n_attributes*n_values), device=sender_input.device)
 
             idxs_to_mask = (torch.abs(masked_input.view(
