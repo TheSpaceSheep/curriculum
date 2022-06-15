@@ -102,19 +102,17 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                     self.n_attributes,
                     replacement=False)
 
-        # TODO: do this without a loop
-        # for i in range(batch_size):
-        #     for j in range(self.n_attributes):
-        #         if idxs_to_reveal.shape[1] and j > n_revealed[i]:
-        #             idxs_to_reveal[i, j] = idxs_to_reveal[i, :].min() 
-
-        # mask indices with a redondant value
-        mask_idxs_to_reveal = torch.arange(self.n_attributes).expand(batch_size, self.n_attributes)
-        mask_idxs_to_reveal = (mask_idxs_to_reveal < n_revealed.view(batch_size, -1)).long()
-        idxs_to_reveal = idxs_to_reveal * mask_idxs_to_reveal + idxs_to_reveal[:, 0].view(batch_size, 1).expand(batch_size, self.n_attributes) * (1-mask_idxs_to_reveal)
-        
-        print(n_revealed)
-        print(idxs_to_reveal)
+        # mask indices with a redundant value
+        mask_idxs_to_reveal = torch.arange(self.n_attributes).expand(
+            batch_size, self.n_attribute
+        )
+        mask_idxs_to_reveal = (
+                mask_idxs_to_reveal < n_revealed.view(batch_size, -1)
+        ).long()
+        idxs_to_reveal *= mask_idxs_to_reveal
+        idxs_to_reveal += idxs_to_reveal[:, 0].view(
+            batch_size, 1
+        ).expand(batch_size, self.n_attributes) * (1 - mask_idxs_to_reveal)
         
         idxs_to_reveal = idxs_to_reveal.to(sender_input.device)
         n_revealed = n_revealed.to(sender_input.device)
