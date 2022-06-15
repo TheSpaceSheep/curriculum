@@ -52,8 +52,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             n_values: int,
             mask_positioning: str,
             masking_mode: str,
-            reveal_distribution: str='deterministic',
-            initial_n_unmasked: int=1,
+            reveal_distribution: str,
+            initial_n_unmasked: int,
         ):
         valid_mask_positionings = ['left_to_right', 'random']
         if mask_positioning not in valid_mask_positionings:
@@ -82,7 +82,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         # n_revealed specifies the number of revealed attributes for each
         # element of the batch. It is of shape (batch_size,)
         if self.reveal_distribution == 'deterministic':
-            n_revealed = torch.tensor([self.curriculum_level]*batch_size)
             probs = torch.zeros((batch_size, self.curriculum_level))
             probs[:,  -1] = 1.
         elif self.reveal_distribution == 'uniform':
@@ -95,21 +94,28 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         n_revealed += 1  # to prevent 0 revealed
 
         if self.mask_positioning == 'left_to_right':
-            idxs_to_reveal = torch.arange(self.curriculum_level, dtype=torch.long)
-            idxs_to_reveal = idxs_to_reveal.expand(batch_size, idxs_to_reveal.shape[0])
+            idxs_to_reveal = torch.arange(self.n_attributes, dtype=torch.long)
+            idxs_to_reveal = idxs_to_reveal.expand(batch_size, self.n_attributes)
         elif self.mask_positioning == 'random':
             reveal_probability = torch.ones((batch_size, self.n_attributes))/self.n_attributes
             idxs_to_reveal = torch.multinomial(reveal_probability,
-                    self.curriculum_level,
+                    self.n_attributes,
                     replacement=False)
 
         # TODO: do this without a loop
-        for i in range(batch_size):
-            for j in range(self.curriculum_level):
-                if idxs_to_reveal.shape[1] and j > n_revealed[i]:
-                    idxs_to_reveal[i, j] = idxs_to_reveal[i, :].min() 
+        # for i in range(batch_size):
+        #     for j in range(self.n_attributes):
+        #         if idxs_to_reveal.shape[1] and j > n_revealed[i]:
+        #             idxs_to_reveal[i, j] = idxs_to_reveal[i, :].min() 
 
-
+        # mask indices with a redondant value
+        mask_idxs_to_reveal = torch.arange(self.n_attributes).expand(batch_size, self.n_attributes)
+        mask_idxs_to_reveal = (mask_idxs_to_reveal < n_revealed.view(batch_size, -1)).long()
+        idxs_to_reveal = idxs_to_reveal * mask_idxs_to_reveal + idxs_to_reveal[:, 0].view(batch_size, 1).expand(batch_size, self.n_attributes) * (1-mask_idxs_to_reveal)
+        
+        print(n_revealed)
+        print(idxs_to_reveal)
+        
         idxs_to_reveal = idxs_to_reveal.to(sender_input.device)
         n_revealed = n_revealed.to(sender_input.device)
 

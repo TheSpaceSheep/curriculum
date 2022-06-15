@@ -159,6 +159,12 @@ def get_params(params):
         default="zero_out",
         help="How to mask the attributes"
     )
+    parser.add_argument(
+        "--reveal_distribution",
+        type=str,
+        default="deterministic",
+        help="Distribution to sample the number of attributes to reveal"
+    )
 
     args = core.init(arg_parser=parser, params=params)
     return args
@@ -273,6 +279,7 @@ def main(params):
             tot_n_values,
             mask_positioning=opts.mask_positioning,
             masking_mode=opts.masking_mode,
+            reveal_distribution=opts.reveal_distribution,
             initial_n_unmasked=opts.initial_n_unmasked
         )
 
