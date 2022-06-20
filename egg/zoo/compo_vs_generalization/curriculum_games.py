@@ -78,6 +78,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
+        device = sender_input.device
 
         # n_revealed specifies the number of revealed attributes for each
         # element of the batch. It is of shape (batch_size,)
@@ -89,9 +90,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         else:
             raise NotImplemented
 
-        distr = torch.distributions.Categorical(probs)
-        n_revealed = distr.sample()
-        n_revealed += 1  # to prevent 0 revealed
+        n_revealed = torch.multinomial(probs, 1).to(device)
+        n_revealed += 1  # so that n_revealed is between 1 and n_attributes
 
         if self.mask_positioning == 'left_to_right':
             idxs_to_reveal = torch.arange(self.n_attributes, dtype=torch.long)
@@ -102,21 +102,26 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                     self.n_attributes,
                     replacement=False)
 
+        idxs_to_reveal = idxs_to_reveal.to(device)
+
         # mask indices with a redundant value
+        # e.g. if idxs_to_reveal = [[3, 2, 0, 1]] and n_revealed = [[2]]
+        # we define mask_idxs_to_reveal = [[1, 1, 0, 0]]
+        # and we mask idxs_to_reveal with its first value, so as to get
+        # idxs_to_reveal = [[3, 2, 3, 3]].
+        # this way, we only have 2 indices to reveal, but we keep
+        # a consistent shape within the batch.
         mask_idxs_to_reveal = torch.arange(self.n_attributes).expand(
-            batch_size, self.n_attribute
-        )
+            batch_size, self.n_attributes
+        ).to(device)
         mask_idxs_to_reveal = (
                 mask_idxs_to_reveal < n_revealed.view(batch_size, -1)
         ).long()
-        idxs_to_reveal *= mask_idxs_to_reveal
-        idxs_to_reveal += idxs_to_reveal[:, 0].view(
+        idxs_to_reveal = idxs_to_reveal * mask_idxs_to_reveal
+        idxs_to_reveal = idxs_to_reveal + idxs_to_reveal[:, 0].view(
             batch_size, 1
         ).expand(batch_size, self.n_attributes) * (1 - mask_idxs_to_reveal)
         
-        idxs_to_reveal = idxs_to_reveal.to(sender_input.device)
-        n_revealed = n_revealed.to(sender_input.device)
-
         sender_input = mask_attributes(sender_input,
                 idxs_to_reveal,
                 self.n_attributes,
@@ -127,7 +132,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         if aux_input is None:
             aux_input = {}
         aux_input['idxs_to_reveal'] = idxs_to_reveal
-        aux_input['n_revealed'] = n_revealed
 
 
         return self.game(sender_input, labels, receiver_input=None, aux_input=aux_input)

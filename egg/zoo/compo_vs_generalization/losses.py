@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from egg.zoo.compo_vs_generalization.data import mask_attributes
 
+
 class DiffLoss(torch.nn.Module):
     def __init__(self, n_attributes, n_values, generalization=False):
         super().__init__()
@@ -122,78 +123,38 @@ class MaskedLoss(torch.nn.Module):
     ):
         batch_size = sender_input.size(0)
         idxs_to_reveal = _aux_input['idxs_to_reveal']
-        n_revealed = _aux_input['n_revealed']
 
-        masked_input = mask_attributes(sender_input,
-                                       idxs_to_reveal,
-                                       self.n_attributes,
-                                       self.n_values)
-        masked_output = mask_attributes(receiver_output,
-                                        idxs_to_reveal,
-                                        self.n_attributes,
-                                        self.n_values)
-
-        masked_input = masked_input.view(
+        sender_input = sender_input.view(
             batch_size, self.n_attributes, self.n_values
         )
-        masked_output = masked_output.view(
+        receiver_output = receiver_output.view(
             batch_size, self.n_attributes, self.n_values
         )
 
-        # acc : (batch_size,) tensor containing
-        # 1 where the vectors were perfectly
-        # reconstructed by the receiver, 0 elsewhere.
-        acc = (
-            (
-                torch.sum(
-                    (
-                        # this counts all masks as correct predictions
-                        masked_output.argmax(dim=-1) == masked_input.argmax(dim=-1)
-                    ).detach(),
-                    dim=1,
-                )
-                # so we have to compensate by
-                # substracting the number of masks
-                - (self.n_attributes - n_revealed)
-            )
-            == n_revealed
+        # create attribute mask
+        mask = torch.zeros_like(idxs_to_reveal)
+        mask = mask.scatter(
+            dim=1, index=idxs_to_reveal, value=1.
         ).float()
 
-        masked_output = masked_output.view(
-             batch_size*self.n_attributes, self.n_values
-        )
-        masked_input = masked_input.view(
-            batch_size*self.n_attributes, self.n_values
-        )
+        # matches for each attributes
+        matches = (sender_input.argmax(dim=-1) == receiver_output.argmax(dim=-1)).float()
 
-        # remove masked values to compute acc_or
-        remove_masked_output = masked_output[torch.abs(masked_output).sum(dim=1) != 0].detach()
-        remove_masked_input = masked_input[torch.abs(masked_input).sum(dim=1) != 0].detach()
+        # Average across attributes (but only count revealed attributes)
+        acc_or = (matches * mask).sum(-1) / mask.sum(-1)
 
-        # acc_or : (batch_size * < n_attributes) tensor
-        # containing 1 where a revealed attribute was
-        # correctly reconstructed by the receiver,
-        # (even if the vector as a whole is not
-        # perfectly reconstructed), 0 elsewhere.
-        acc_or = (
-            remove_masked_output.argmax(dim=-1) == remove_masked_input.argmax(dim=-1)
-        ).float()
+        # Exact matches: Count 1 if attribute is predicted correctly OR if it is masked.
+        acc = torch.all((matches == 1) | (mask == 0), dim=-1).float()
 
-        # taking the mean of acc (resp. acc_or) gives the average accuracy
-        # of vector reconstruction (resp. attribute reconstruction)
+        # Loss for each attribute (you need to flatten the first dimensions 
+        # and reshape them afterwards)
+        loss_by_attributes = F.cross_entropy(
+            receiver_output.view(-1, self.n_attributes),
+            sender_input.argmax(-1).view(-1),
+            reduction="none",
+        ).view(batch_size, self.n_attributes)
 
-        # these labels include masked attributes, so we need to mask the loss
-        labels = masked_input.argmax(dim=-1)
-
-        loss = (
-            F.cross_entropy(masked_output, labels, reduction="none")
-            .view(batch_size, self.n_attributes)
-        )
-        # mask loss
-        loss = torch.zeros_like(loss).scatter(
-            dim=1, index=idxs_to_reveal, src=loss
-        )
-        # average over revealed attributes only
-        loss = loss.sum(dim=1) / n_revealed
+        # Take the mean, but only of the revealed attributes
+        loss = (loss_by_attributes * mask).sum(-1) / mask.sum(-1)
 
         return loss, {"acc": acc, "acc_or": acc_or}

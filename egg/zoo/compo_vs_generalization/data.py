@@ -214,6 +214,7 @@ def mask_attributes(sender_input,
     mask = torch.zeros((batch_size, n_attributes), device=sender_input.device)
     mask = mask.scatter(dim=1, index=idxs_to_reveal, value=1)
     mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
+    mask = mask.detach()
     
     masked_input = sender_input*mask
     if mask_by_last_value:

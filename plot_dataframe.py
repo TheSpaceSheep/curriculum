@@ -163,11 +163,8 @@ if __name__ == "__main__":
     sb.relplot(x='epoch',
                y='acc_or',
                data=df[df['mode']=='test'], 
-               row='plateau_threshold',
-               #col_wrap=3,
-               col='random_seed',
-               kind='line',
-               palette='dark:b',
+               col='initial_n_unmasked',
+               col_wrap=3,
                ci='sd')
 
     plt.show()
