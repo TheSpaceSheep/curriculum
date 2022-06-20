@@ -413,11 +413,11 @@ class RnnReceiverDeterministic(nn.Module):
         return agent_output, logits, entropy
 
 
-class RnnReceiverImpatient(nn.Module):
+class RnnReceiverDeterministicImpatient(nn.Module):
     """
     Impatient Listener.
     The wrapper logic feeds the message into the cell and calls the wrapped agent.
-    The wrapped agent has to returns the intermediate hidden states for every position.
+    The wrapped agent has to return the intermediate hidden states for every position.
     All the hidden states are mapped to a categorical distribution by self.agent
     The categorical probabilities (step_logits) will then be used to compute the Impatient loss function.
     """
@@ -618,7 +618,7 @@ class CommunicationRnnReinforce(nn.Module):
 
         # the log prob of the choices made by S before and including the eos symbol - again, we don't
         # care about the rest
-        effective_log_prob_s = torch.zeros_like(log_prob_r)
+        effective_log_prob_s = torch.zeros_like(log_prob_r.shape[0])
 
         for i in range(message.size(1)):
             not_eosed = (i < message_length).float()
@@ -631,7 +631,8 @@ class CommunicationRnnReinforce(nn.Module):
             + entropy_r.mean() * self.receiver_entropy_coeff
         )
 
-        log_prob = effective_log_prob_s + log_prob_r
+        # log_prob_r can be a 1D or 2D tensor
+        log_prob = effective_log_prob_s + log_prob_r.view(batch_size, -1).mean(1)
 
         length_loss = message_length.float() * self.length_cost
 

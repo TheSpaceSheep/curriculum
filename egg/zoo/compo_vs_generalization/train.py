@@ -168,7 +168,7 @@ def get_params(params):
     parser.add_argument(
         "--impatient",
         action="store_true",
-        help="Learn according to a curriculum",
+       help="Learn according to a curriculum",
     )
 
     args = core.init(arg_parser=parser, params=params)

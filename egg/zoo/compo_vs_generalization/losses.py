@@ -121,6 +121,7 @@ class MaskedLoss(torch.nn.Module):
         _labels,
         _aux_input,
     ):
+        print(_message.shape)
         batch_size = sender_input.size(0)
         idxs_to_reveal = _aux_input['idxs_to_reveal']
 
@@ -130,6 +131,66 @@ class MaskedLoss(torch.nn.Module):
         receiver_output = receiver_output.view(
             batch_size, self.n_attributes, self.n_values
         )
+
+        # create attribute mask
+        mask = torch.zeros_like(idxs_to_reveal)
+        mask = mask.scatter(
+            dim=1, index=idxs_to_reveal, value=1.
+        ).float()
+
+        # matches for each attributes
+        matches = (sender_input.argmax(dim=-1) == receiver_output.argmax(dim=-1)).float()
+
+        # Average across attributes (but only count revealed attributes)
+        acc_or = (matches * mask).sum(-1) / mask.sum(-1)
+
+        # Exact matches: Count 1 if attribute is predicted correctly OR if it is masked.
+        acc = torch.all((matches == 1) | (mask == 0), dim=-1).float()
+
+        # Loss for each attribute (you need to flatten the first dimensions 
+        # and reshape them afterwards)
+        loss_by_attributes = F.cross_entropy(
+            receiver_output.view(-1, self.n_attributes),
+            sender_input.argmax(-1).view(-1),
+            reduction="none",
+        ).view(batch_size, self.n_attributes)
+
+        # Take the mean, but only of the revealed attributes
+        loss = (loss_by_attributes * mask).sum(-1) / mask.sum(-1)
+
+        return loss, {"acc": acc, "acc_or": acc_or}
+
+
+class MaskedImpatientLoss(torch.nn.Module):
+    def __init__(
+        self,
+        n_attributes: int,
+        n_values: int
+    ):
+        super().__init__()
+        self.n_attributes = n_attributes
+        self.n_values = n_values
+
+    def forward(
+        self,
+        sender_input,
+        _message,
+        _receiver_input,
+        receiver_output,
+        _labels,
+        _aux_input,
+    ):
+        print(_message.shape)
+        batch_size = sender_input.size(0)
+        idxs_to_reveal = _aux_input['idxs_to_reveal']
+
+        sender_input = sender_input.view(
+            batch_size, self.n_attributes, self.n_values
+        )
+        receiver_output = receiver_output.view(
+            batch_size, self.n_attributes, self.n_values
+        )
+        # this should have shape (bs, max_len(=10), n_attr*n_values)
 
         # create attribute mask
         mask = torch.zeros_like(idxs_to_reveal)
