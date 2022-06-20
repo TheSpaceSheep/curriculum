@@ -614,7 +614,7 @@ class CommunicationRnnReinforce(nn.Module):
         )
 
         # the entropy of the outputs of S before and including the eos symbol - as we don't care about what's after
-        effective_entropy_s = torch.zeros((entropy_r.shape[0],))
+        effective_entropy_s = torch.zeros((entropy_r.shape[0],), device=sender_input.device)
 
         # the log prob of the choices made by S before and including the eos symbol - again, we don't
         # care about the rest
