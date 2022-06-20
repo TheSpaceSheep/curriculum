@@ -162,9 +162,10 @@ if __name__ == "__main__":
     # plot_max_acc(df)
     sb.relplot(x='epoch',
                y='acc_or',
-               data=df[df['mode']=='test'], 
+               data=df[df['mode']=='train'], 
                col='initial_n_unmasked',
                col_wrap=3,
+               kind='line',
                ci='sd')
 
     plt.show()
