@@ -31,7 +31,7 @@ from egg.zoo.compo_vs_generalization.data import (
 from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
-from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
+from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss, MaskedImpatientLoss
 from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater
 
 
@@ -271,7 +271,9 @@ def main(params):
         "builtin": core.baselines.BuiltInBaseline,
     }[opts.baseline]
 
-    if opts.curriculum and opts.masking_mode != "dedicated_value":
+    if opts.impatient:
+        loss = MaskedImpatientLoss(opts.n_attributes, tot_n_values)
+    elif opts.curriculum and opts.masking_mode != "dedicated_value":
         loss = MaskedLoss(opts.n_attributes, tot_n_values)
     else:
         loss = DiffLoss(opts.n_attributes, tot_n_values)

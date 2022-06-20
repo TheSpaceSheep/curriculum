@@ -73,15 +73,18 @@ class RnnEncoder(nn.Module):
         packed = nn.utils.rnn.pack_padded_sequence(
             emb, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
-        seq_hidden, rnn_hidden = self.cell(packed)
+        packed_seq_hidden, rnn_hidden = self.cell(packed)
+        seq_hidden = nn.utils.rnn.pad_packed_sequence(packed_seq_hidden)
 
         if isinstance(self.cell, nn.LSTM):
-            print(rnn_hidden)
             rnn_hidden, _ = rnn_hidden
-            seq_hidden = seq_hidden.data
+            seq_hidden, _ = seq_hidden
+
+        print(rnn_hidden.shape)
+        print(seq_hidden.shape)
 
         if self.impatient:
-            return rnn_hidden
+            return seq_hidden
         else:
             return rnn_hidden[-1]
 
