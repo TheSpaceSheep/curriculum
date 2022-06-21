@@ -211,10 +211,6 @@ def mask_attributes(sender_input,
         f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_reveal.shape[0]})"
 
     batch_size = sender_input.shape[0]
-    mask = torch.zeros((batch_size, n_attributes), device=sender_input.device)
-    mask = mask.scatter(dim=1, index=idxs_to_reveal, value=1)
-    mask = mask.repeat_interleave(repeats=n_values, dim=1)  # [[a, b]] -> [[a, ... a, b, ... b]]
-    mask = mask.detach()
     
     masked_input = sender_input*mask
     if mask_by_last_value:

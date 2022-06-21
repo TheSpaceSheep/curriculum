@@ -121,17 +121,19 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         idxs_to_reveal = idxs_to_reveal + idxs_to_reveal[:, 0].view(
             batch_size, 1
         ).expand(batch_size, self.n_attributes) * (1 - mask_idxs_to_reveal)
-        
-        sender_input = mask_attributes(sender_input,
-                idxs_to_reveal,
-                self.n_attributes,
-                self.n_values,
-                mask_by_last_value=(self.masking_mode=='dedicated_value'))
+
+        # create attribute mask
+        mask = torch.zeros((batch_size, self.n_attributes), device=sender_input.device)
+        mask = mask.scatter(dim=1, index=idxs_to_reveal, value=1)
+        mask = mask.detach()
+
+        # mask attributes
+        sender_input = sender_input * mask.repeat_interleave(repeats=self.n_values, dim=1)
 
         # pass masking info to loss
         if aux_input is None:
             aux_input = {}
-        aux_input['idxs_to_reveal'] = idxs_to_reveal
+        aux_input['mask'] = mask
 
 
         return self.game(sender_input, labels, receiver_input=None, aux_input=aux_input)

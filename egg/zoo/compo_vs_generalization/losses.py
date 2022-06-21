@@ -122,7 +122,7 @@ class MaskedLoss(torch.nn.Module):
         _aux_input,
     ):
         batch_size = sender_input.size(0)
-        idxs_to_reveal = _aux_input['idxs_to_reveal']
+        mask = _aux_input['mask']
 
         sender_input = sender_input.view(
             batch_size, self.n_attributes, self.n_values
@@ -130,12 +130,6 @@ class MaskedLoss(torch.nn.Module):
         receiver_output = receiver_output.view(
             batch_size, self.n_attributes, self.n_values
         )
-
-        # create attribute mask
-        mask = torch.zeros_like(idxs_to_reveal)
-        mask = mask.scatter(
-            dim=1, index=idxs_to_reveal, value=1.
-        ).float()
 
         # matches for each attributes
         matches = (sender_input.argmax(dim=-1) == receiver_output.argmax(dim=-1)).float()
