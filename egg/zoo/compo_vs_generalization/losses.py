@@ -151,6 +151,7 @@ class MaskedLoss(torch.nn.Module):
         # Take the mean, but only of the revealed attributes
         loss = (loss_by_attributes * mask).sum(-1) / mask.sum(-1)
 
+<<<<<<< HEAD
         return loss, {"acc": acc, "acc_or": acc_or}
 
 
@@ -229,3 +230,13 @@ class MaskedImpatientLoss(torch.nn.Module):
         # loss = loss / len_mask.sum(dim=0).mean(-1)
 
         return loss, {"acc": acc, "acc_or": acc_or}
+=======
+        logs = {
+            "acc": acc,
+            "acc_or": acc_or,
+            "curriculum_level": _aux_input["curriculum_level"]
+        }
+
+        return loss, logs
+
+>>>>>>> 053aed9... pass curriculum level through eggs logging system

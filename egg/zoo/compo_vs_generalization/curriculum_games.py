@@ -147,7 +147,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         if aux_input is None:
             aux_input = {}
         aux_input['mask'] = mask
-        
 
         optimized_loss, interaction = self.game(
             sender_input, 
@@ -156,8 +155,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             aux_input=aux_input
         )
         interaction.aux['curriculum_level'] = torch.tensor(self.curriculum_level, device=sender_input.device, dtype=torch.float32).expand(batch_size, 1)
-        return optimized_loss, interaction
 
+        return optimized_loss, interaction
 
 
     def update_curriculum_level(self):
