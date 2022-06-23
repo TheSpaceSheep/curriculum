@@ -228,5 +228,4 @@ class MaskedImpatientLoss(torch.nn.Module):
         loss = loss / mask.sum(dim=-1).mean(0)
         # loss = loss / len_mask.sum(dim=0).mean(-1)
 
-
         return loss, {"acc": acc, "acc_or": acc_or}
