@@ -143,11 +143,11 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         # mask attributes
         sender_input = sender_input * mask.repeat_interleave(repeats=self.n_values, dim=1)
 
-        # pass masking info to loss
+        # pass masking info to loss and curriculum (for logging)
         if aux_input is None:
             aux_input = {}
         aux_input['mask'] = mask
-
+        aux_input['curriculum_level'] = torch.tensor(self.curriculum_level, device=sender_input.device, dtype=torch.float32).expand(batch_size, 1)
 
         return self.game(sender_input, labels, receiver_input=None, aux_input=aux_input)
 
