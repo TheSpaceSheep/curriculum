@@ -122,11 +122,13 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             batch_size, 1
         ).expand(batch_size, self.n_attributes) * (1 - mask_idxs_to_reveal)
         
+        print(sender_input)
         sender_input = mask_attributes(sender_input,
                 idxs_to_reveal,
                 self.n_attributes,
                 self.n_values,
                 mask_by_last_value=(self.masking_mode=='dedicated_value'))
+        print(sender_input)
 
         # pass masking info to loss
         if aux_input is None:
