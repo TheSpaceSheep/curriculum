@@ -101,6 +101,12 @@ if __name__ == "__main__":
         default=128,
         help="Max number of parallel jobs" "executed from the search",
     )
+    parser.add_argument(
+        "--qos",
+        type=str,
+        default="qos_gpu-t3",
+        help="Quality of service",
+    )
 
     args = parser.parse_args()
 
@@ -141,6 +147,7 @@ if __name__ == "__main__":
         slurm_constraint=args.constraint,
         nodes=args.nodes,
         tasks_per_node=args.tasks,
+        qos=args.qos,
         #mem_gb=args.mem_gb,
     )
 
