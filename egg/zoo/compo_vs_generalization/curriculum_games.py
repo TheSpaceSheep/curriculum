@@ -76,8 +76,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         self.reveal_distribution = reveal_distribution
         self.curriculum_level = min(initial_n_unmasked, n_attributes)
 
-        self.testing = False
-
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
@@ -92,7 +90,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             probs = torch.ones((batch_size, self.curriculum_level)) / self.curriculum_level
         elif self.reveal_distribution == 'natural':
             # this distribution simulates sampling from a dataset containing 
-            # every masked input (up to curriculum_level masks)
+            # every masked input (up to curriculum_level masks).
+            # For k masks, there are (n_attributes choose k)*n_values^k elements
             
             probs = torch.tensor(
                 [scipy.special.comb(self.n_attributes, k) * self.n_values**k 
@@ -117,7 +116,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         idxs_to_reveal = idxs_to_reveal.to(device)
 
         # only mask attributes when training
-        if not self.testing:
+        if self.training:
             # mask indices with a redundant value
             # e.g. if idxs_to_reveal = [[3, 2, 0, 1]] and n_revealed = [[2]]
             # we define mask_idxs_to_reveal = [[1, 1, 0, 0]]
@@ -161,7 +160,3 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             self.curriculum_level += 1
             print('Curriculum level : ', self.curriculum_level)
 
-
-    def train(self, mode=True):
-        self.testing = not mode
-        return super().train(mode)
