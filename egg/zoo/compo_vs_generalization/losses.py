@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from egg.zoo.compo_vs_generalization.data import mask_attributes
 
+
 class DiffLoss(torch.nn.Module):
     def __init__(self, n_attributes, n_values, generalization=False):
         super().__init__()
@@ -102,9 +103,10 @@ class DiffLoss(torch.nn.Module):
 
 
 class MaskedLoss(torch.nn.Module):
-    def __init__(self, 
-            n_attributes: int,
-            n_values: int
+    def __init__(
+        self,
+        n_attributes: int,
+        n_values: int
     ):
         super().__init__()
         self.n_attributes = n_attributes
@@ -120,58 +122,33 @@ class MaskedLoss(torch.nn.Module):
         _aux_input,
     ):
         batch_size = sender_input.size(0)
-        idxs_to_mask = _aux_input['idxs_to_mask']
+        mask = _aux_input['mask']
 
-        masked_input = mask_attributes(sender_input,
-                idxs_to_mask,
-                self.n_attributes,
-                self.n_values,
-                remove_masked_data=True)
-        masked_output = mask_attributes(receiver_output,
-                idxs_to_mask,
-                self.n_attributes,
-                self.n_values,
-                remove_masked_data=True)
-
-        masked_input = masked_input.view(
-                batch_size, -1, self.n_values
-            )
-        masked_output = masked_output.view(
-                batch_size, -1, self.n_values
-            )
-
-        # acc : (batch_size,) tensor containing
-        # 1 where the vectors were perfectly
-        # reconstructed by the receiver, 0 elsewhere.
-        acc = (
-            torch.sum(
-                (
-                    masked_output.argmax(dim=-1) == masked_input.argmax(dim=-1)
-                ).detach(),
-                dim=1,
-            )
-            == masked_input.shape[1]
-        ).float()
-
-        # acc_or : (batch_size, n_attributes-n_masks) tensor
-        # containing 1 where an attribute was
-        # correctly reconstructed by the receiver,
-        # (even if the vector as a whole is not
-        # perfectly reconstructed), 0 elsewhere.
-        acc_or = (
-            masked_output.argmax(dim=-1) == masked_input.argmax(dim=-1)
-        ).float()
-        # taking the mean of acc (resp. acc_or) gives the average accuracy
-        # of vector reconstruction (resp. attribute reconstruction)
-
-        masked_output = masked_output.view(
-            -1, self.n_values
+        sender_input = sender_input.view(
+            batch_size, self.n_attributes, self.n_values
         )
-        labels = masked_input.argmax(dim=-1).view(-1)
-        loss = (
-            F.cross_entropy(masked_output, labels, reduction="none")
-            .view(batch_size, -1)
-            .mean(dim=-1)
+        receiver_output = receiver_output.view(
+            batch_size, self.n_attributes, self.n_values
         )
+
+        # matches for each attributes
+        matches = (sender_input.argmax(dim=-1) == receiver_output.argmax(dim=-1)).float()
+
+        # Average across attributes (but only count revealed attributes)
+        acc_or = (matches * mask).sum(-1) / mask.sum(-1)
+
+        # Exact matches: Count 1 if attribute is predicted correctly OR if it is masked.
+        acc = torch.all((matches == 1) | (mask == 0), dim=-1).float()
+
+        # Loss for each attribute (you need to flatten the first dimensions 
+        # and reshape them afterwards)
+        loss_by_attributes = F.cross_entropy(
+            receiver_output.view(-1, self.n_attributes),
+            sender_input.argmax(-1).view(-1),
+            reduction="none",
+        ).view(batch_size, self.n_attributes)
+
+        # Take the mean, but only of the revealed attributes
+        loss = (loss_by_attributes * mask).sum(-1) / mask.sum(-1)
 
         return loss, {"acc": acc, "acc_or": acc_or}

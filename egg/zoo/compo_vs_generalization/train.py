@@ -122,7 +122,7 @@ def get_params(params):
         type=int,
         default=714783,
         help="Random seed for data generation",
-        )
+    )
     parser.add_argument(
         "--curriculum",
         action="store_true",
@@ -131,8 +131,14 @@ def get_params(params):
     parser.add_argument(
         "--acc_threshold",
         type=float,
-        default=0.7,
+        default=None,
         help="Accuracy to reach before augmenting the curriculum level",
+    )
+    parser.add_argument(
+        "--plateau_threshold",
+        type=float,
+        default=1e-4,
+        help="Threshold to reach before considering we are on an accuracy plateau",
     )
     parser.add_argument(
         "--initial_n_unmasked",
@@ -153,11 +159,15 @@ def get_params(params):
         default="zero_out",
         help="How to mask the attributes"
     )
-
+    parser.add_argument(
+        "--reveal_distribution",
+        type=str,
+        default="deterministic",
+        help="Distribution to sample the number of attributes to reveal"
+    )
 
     args = core.init(arg_parser=parser, params=params)
     return args
-
 
 
 def main(params):
@@ -179,10 +189,10 @@ def main(params):
         rng = torch.Generator()
         rng.manual_seed(opts.data_seed)
         print("Building train, test and validation sets "
-             f"of size {opts.train_size}, {opts.test_size}, "
-             f"and {opts.validation_size}...", end="")
+              f"of size {opts.train_size}, {opts.test_size}, "
+              f"and {opts.validation_size}...", end="")
         train, test, validation = \
-            build_datasets(opts.n_attributes, 
+            build_datasets(opts.n_attributes,
                            opts.n_values,
                            opts.train_size,
                            opts.test_size,
@@ -190,13 +200,12 @@ def main(params):
                            rng=rng)
 
     if opts.masking_mode == 'dedicated_value':
-        # Add one value that represents masking 
+        # Add one value that represents masking
         # the corresponding attribute
         tot_n_values = opts.n_values + 1
     else:
         tot_n_values = opts.n_values
 
-    
     train, validation, test = [
         one_hotify(x, opts.n_attributes, tot_n_values)
         for x in [train, validation, test]
@@ -206,7 +215,6 @@ def main(params):
     validation = ScaledDataset(validation, 1)
     test = ScaledDataset(test, 1)
     print(" - done")
-
 
     test_loader = DataLoader(test, batch_size=opts.batch_size)
     train_loader = DataLoader(train, batch_size=opts.batch_size)
@@ -266,13 +274,14 @@ def main(params):
     if opts.curriculum:
         # wrap game
         game = GraduallyRevealAttributes(
-                game,
-                opts.n_attributes,
-                tot_n_values,
-                mask_positioning=opts.mask_positioning,
-                masking_mode=opts.masking_mode,
-                initial_n_unmasked=opts.initial_n_unmasked
-            )
+            game,
+            opts.n_attributes,
+            tot_n_values,
+            mask_positioning=opts.mask_positioning,
+            masking_mode=opts.masking_mode,
+            reveal_distribution=opts.reveal_distribution,
+            initial_n_unmasked=opts.initial_n_unmasked
+        )
 
     optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr)
 
@@ -303,18 +312,22 @@ def main(params):
 
     holdout_evaluator = Evaluator(loaders, opts.device, freq=0)
     interaction_saver = core.InteractionSaver(
-            test_epochs=list(range(1, opts.n_epochs, opts.stats_freq)),
-            checkpoint_dir=f"{sys.argv[1]}")
+        test_epochs=list(range(1, opts.n_epochs, opts.stats_freq)),
+        checkpoint_dir=f"{sys.argv[1]}")
 
-    callbacks=[
-        core.ConsoleLogger(as_json=True, print_train_loss=False),
+    callbacks = [
+        core.ConsoleLogger(as_json=True, print_train_loss=True),
         metrics_evaluator,
         holdout_evaluator,
         interaction_saver,
     ]
 
     if opts.curriculum:
-        curriculum_manager = CurriculumUpdater(game, optimizer)
+        curriculum_manager = CurriculumUpdater(
+            game,
+            optimizer,
+            acc_threshold=opts.acc_threshold,
+            plateau_threshold=opts.plateau_threshold)
         callbacks.append(curriculum_manager)
 
     trainer = core.Trainer(
@@ -338,4 +351,3 @@ if __name__ == "__main__":
     import sys
 
     main(sys.argv[1:])
-
