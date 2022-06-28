@@ -157,7 +157,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         """
         Increments the number of revealed indices
         """
-        if self.curriculum_level < self.n_attributes-1:
+        if self.curriculum_level < self.n_attributes:
             self.curriculum_level += 1
             print('Curriculum level : ', self.curriculum_level)
 
