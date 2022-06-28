@@ -200,9 +200,9 @@ class MaskedImpatientLoss(torch.nn.Module):
         len_mask_idx = torch.arange(seq_len, dtype=torch.long).to(sender_input.device)
         len_mask_idx = len_mask_idx.expand(batch_size, seq_len)
         #print(_message.argmin(1)) # check
-        len_mask = (len_mask_idx <= _message.argmin(1).reshape(batch_size, 1)).float()
-        #print(len_mask) # check
-        len_mask = len_mask.expand(self.n_attributes, batch_size, seq_len).permute(2, 1, 0)
+        len_mask = (len_mask_idx <= _message.argmin(1).reshape(batch_size, 1)).float().t()
+        #print(len_mask) # shape (seq_len, bs)
+        len_mask = len_mask.unsqueeze(-1).expand(seq_len, batch_size, self.n_attributes)
         #print('len_mask')
         #print(len_mask.shape) # should be (seq_len, batch_size, self.n_attributes)
         #print(len_mask[:, 1, 0])
@@ -234,13 +234,14 @@ class MaskedImpatientLoss(torch.nn.Module):
         ).reshape(seq_len, batch_size, self.n_attributes)
 
         # Take the mean, but only of the revealed attributes
-        print(mask.sum(dim=-1).mean(0))
-        print(len_mask.sum(dim=0).mean(-1))
+        print(mask.sum(dim=-1).mean(0)) # number of masked attributes for each element in the batch, at each message step
+        print(len_mask.sum(dim=0).mean(-1)) # number of masked symbols after EOS
         print((loss_by_attributes * mask * len_mask).sum(dim=(0, -1)))
 
         loss = (loss_by_attributes * mask * len_mask).sum(dim=(0, -1)) / (mask.sum(dim=-1).mean(0) * len_mask.sum(dim=0).mean(-1))
-        #print('loss')
-        #print(loss.shape)
+        print('loss')
+        print(loss)
+        print(loss.shape)
 
         return loss, {"acc": acc, "acc_or": acc_or}
 
