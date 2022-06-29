@@ -1,7 +1,7 @@
 import torch
 import os
 import sys
-from plot_dataframe import build_dataframe
+from plot_df import build_dataframe
 
 data_dir = sys.argv[1]
 if data_dir[-1] != '/':
@@ -9,12 +9,11 @@ if data_dir[-1] != '/':
 
 interactions_dir = data_dir + "interactions/validation/"
 
- 
 
 def display_interaction(interaction):
     input_batch = interaction.sender_input
     message_batch = interaction.message
-    
+
     df = build_dataframe(data_dir)
 
     for i, m in zip(input_batch, message_batch):
@@ -27,7 +26,5 @@ def display_interaction(interaction):
 for epoch_dir in [d.name for d in os.scandir(interactions_dir) if d.is_dir()][-10:]:
     print(epoch_dir)
     for filename in os.listdir(interactions_dir + epoch_dir):
-        interaction = torch.load(interactions_dir+epoch_dir+'/'+filename)
+        interaction = torch.load(interactions_dir + epoch_dir + '/' + filename)
         display_interaction(interaction)
-
-
