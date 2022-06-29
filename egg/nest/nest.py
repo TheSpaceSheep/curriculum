@@ -76,9 +76,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Disable preemption from other processes on SLURM",
     )
-    #parser.add_argument(
+    # parser.add_argument(
     #    "--mem_gb", type=int, default=64, help="CPU memory (in GB) required per task"
-    #)
+    # )
     parser.add_argument(
         "--constraint",
         type=str,
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         nodes=args.nodes,
         tasks_per_node=args.tasks,
         qos=args.qos,
-        #mem_gb=args.mem_gb,
+        # mem_gb=args.mem_gb,
     )
 
     if args.array:

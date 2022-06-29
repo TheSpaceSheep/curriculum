@@ -10,9 +10,9 @@ def dict2string(d):
     for k, v in d.items():
         if type(v) in (int, float):
             s.append(f"--{k}={v}")
-        elif type(v) is bool and v:
+        elif isinstance(v, bool) and v:
             s.append(f"--{k}")
-        elif type(v) is str:
+        elif isinstance(v, str):
             assert (
                 '"' not in v
             ), f"Key {k} has string value {v} which contains forbidden quotes."
