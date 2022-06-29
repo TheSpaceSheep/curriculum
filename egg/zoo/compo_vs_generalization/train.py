@@ -283,7 +283,7 @@ def main(params):
             initial_n_unmasked=opts.initial_n_unmasked
         )
 
-    optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr)
+    optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr, weight_decay=0.005)
 
     metrics_evaluator = Metrics(
         validation.examples,
