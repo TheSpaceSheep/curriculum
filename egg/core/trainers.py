@@ -198,7 +198,6 @@ class Trainer:
 
         return mean_loss.item(), full_interaction
 
-
     def train_epoch(self):
         mean_loss = 0
         n_batches = 0
@@ -334,4 +333,3 @@ class Trainer:
 
         if latest_file is not None:
             self.load_from_checkpoint(latest_file)
-
