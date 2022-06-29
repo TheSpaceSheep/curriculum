@@ -154,7 +154,6 @@ class MaskedLoss(torch.nn.Module):
         logs = {
             "acc": acc,
             "acc_or": acc_or,
-            "curriculum_level": _aux_input["curriculum_level"]
         }
 
         return loss, logs
