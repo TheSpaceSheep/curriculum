@@ -151,10 +151,4 @@ class MaskedLoss(torch.nn.Module):
         # Take the mean, but only of the revealed attributes
         loss = (loss_by_attributes * mask).sum(-1) / mask.sum(-1)
 
-        logs = {
-            "acc": acc,
-            "acc_or": acc_or,
-        }
-
-        return loss, logs
-
+        return loss, {"acc": acc, "acc_or": acc_or}
