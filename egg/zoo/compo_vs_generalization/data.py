@@ -77,7 +77,7 @@ def one_hotify(data: List[Tuple[int]], n_attributes: int, n_values: int) -> List
 
     Returns :
         r: list of flattened one-hot matrices
-           [r1, r2, ...] where the ri are 1D torch 
+           [r1, r2, ...] where the ri are 1D torch
            tensors of shape (n_attributes x n_values)
     """
     r = []
@@ -127,12 +127,12 @@ def split_train_test(dataset, p_hold_out=0.1, random_seed=7):
 def build_random_dataset(n_attributes: int,
                          n_values: int,
                          size: int,
-                         data_to_exclude: set=None,
-                         allow_duplicates: bool=False,
-                         rng: torch.Generator=None
+                         data_to_exclude: set = None,
+                         allow_duplicates: bool = False,
+                         rng: torch.Generator = None
                          ) -> List[Tuple[int]]:
     """
-    Samples {size} elements from the input space, 
+    Samples {size} elements from the input space,
     with no overlap with the set {data_to_exclude},
     """
     if n_values**n_attributes / size < 10e4 and allow_duplicates:
@@ -143,7 +143,7 @@ def build_random_dataset(n_attributes: int,
 
     # use a list if duplicates are allowed (uses less memory than set)
     data = list() if allow_duplicates else set()
-    
+
     while len(data) < size:
         sample = tuple(torch.randint(n_values, size=(n_attributes,), generator=rng).tolist())
         if sample not in data_to_exclude:
@@ -154,12 +154,13 @@ def build_random_dataset(n_attributes: int,
 
     return list(data)
 
+
 def build_datasets(n_attributes: int,
                    n_values: int,
                    train_size: int,
                    test_size: int,
                    validation_size: int,
-                   rng: torch.Generator=None) -> Tuple[List[Tuple[int]], List[Tuple[int]], List[Tuple[int]]]:
+                   rng: torch.Generator = None) -> Tuple[List[Tuple[int]], List[Tuple[int]], List[Tuple[int]]]:
     """
     Returns the train, test and validation sets by sampling the data.
     Samples can be repeated in the training set but not in the testing set
@@ -167,20 +168,20 @@ def build_datasets(n_attributes: int,
     """
     # create test and validation sets simultaneously to prevent repeats
     all_test_data = build_random_dataset(n_attributes,
-            n_values, 
-            size=test_size+validation_size,
-            allow_duplicates=False,
-            rng=rng)
+                                         n_values,
+                                         size=test_size + validation_size,
+                                         allow_duplicates=False,
+                                         rng=rng)
     test_set = all_test_data[:test_size]
     validation_set = all_test_data[test_size:]
 
     train_set = build_random_dataset(n_attributes,
-            n_values,
-            size=train_size,
-            data_to_exclude=all_test_data,
-            allow_duplicates=False,  # it might be necessary to change this for very large datasets
-            rng=rng
-            )
+                                     n_values,
+                                     size=train_size,
+                                     data_to_exclude=all_test_data,
+                                     allow_duplicates=False,  # it might be necessary to change this for very large datasets
+                                     rng=rng
+                                     )
 
     return train_set, test_set, validation_set
 
@@ -199,10 +200,10 @@ class ScaledDataset:
 
 
 def mask_attributes(sender_input,
-        idxs_to_reveal,
-        n_attributes,
-        n_values,
-        mask_by_last_value=False):
+                    idxs_to_reveal,
+                    n_attributes,
+                    n_values,
+                    mask_by_last_value=False):
     """
     sender_input: data to mask (already one-hotified)| (batch_size, n_attributes*n_values)
     idxs_to_reveal: indices of attributes to reveal  | (batch_size, < n_attributes)
@@ -211,27 +212,27 @@ def mask_attributes(sender_input,
         f"Cannot mask, batch_sizes do not match between input ({sender_input.shape[0]}) and indices ({idxs_to_reveal.shape[0]})"
 
     batch_size = sender_input.shape[0]
-    
-    masked_input = sender_input*mask
+
+    masked_input = sender_input * mask
     if mask_by_last_value:
         # infer indices of masked attributes from masked_input
         idxs_to_mask = (torch.abs(masked_input.view(
-                batch_size*n_attributes, n_values
+            batch_size * n_attributes, n_values
         )).sum(dim=1) == 0).nonzero()
 
         # indices of last values in the one hot vector,
         # that should be set to one
-        idxs_to_one = (idxs_to_mask+1) * n_values - 1
+        idxs_to_one = (idxs_to_mask + 1) * n_values - 1
 
         add_mask = torch.zeros(
-            (batch_size*n_attributes*n_values),
+            (batch_size * n_attributes * n_values),
             device=sender_input.device
         )
         add_mask = add_mask.scatter(
             dim=0, index=idxs_to_one, value=1
         )
         add_mask = add_mask.view(
-            batch_size, n_attributes*n_values
+            batch_size, n_attributes * n_values
         )
         masked_input += add_mask
 

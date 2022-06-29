@@ -140,7 +140,7 @@ class MaskedLoss(torch.nn.Module):
         # Exact matches: Count 1 if attribute is predicted correctly OR if it is masked.
         acc = torch.all((matches == 1) | (mask == 0), dim=-1).float()
 
-        # Loss for each attribute (you need to flatten the first dimensions 
+        # Loss for each attribute (you need to flatten the first dimensions
         # and reshape them afterwards)
         loss_by_attributes = F.cross_entropy(
             receiver_output.view(-1, self.n_attributes),
