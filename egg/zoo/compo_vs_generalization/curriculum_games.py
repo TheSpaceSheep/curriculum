@@ -6,12 +6,14 @@ from egg.core.reinforce_wrappers import SenderReceiverRnnReinforce
 from egg.zoo.compo_vs_generalization.data import mask_attributes
 from egg.zoo.compo_vs_generalization.losses import MaskedLoss
 
+
 class CurriculumGameWrapper(nn.Module):
     """
     Abstract game wrapper for games that implement a curriculum.
     Child classes should have a curriculum_level attribute
     as well as implement an update_curriculum_level method.
     """
+
     def __init__(self, game: SenderReceiverRnnReinforce):
         super().__init__()
         self.game = game
@@ -37,28 +39,30 @@ class CurriculumGameWrapper(nn.Module):
             return super().__getattr__(attrname)
         except AttributeError:
             return getattr(self.game, attrname)
-            
+
 
 class GraduallyRevealAttributes(CurriculumGameWrapper):
     """
     In this game wrapper, all attributes are masked except {n_revealed} of them.
-    The position of unmasked attributes can be either random if {mode} is 
+    The position of unmasked attributes can be either random if {mode} is
     'random', or at the left if {mode} is 'from_left_to_right'.
     During training, more attributes are gradually revealed as n_revealed
     augments.
     """
+
     def __init__(self,
-            game: SenderReceiverRnnReinforce,
-            n_attributes: int,
-            n_values: int,
-            mask_positioning: str,
-            masking_mode: str,
-            reveal_distribution: str,
-            initial_n_unmasked: int,
-        ):
+                 game: SenderReceiverRnnReinforce,
+                 n_attributes: int,
+                 n_values: int,
+                 mask_positioning: str,
+                 masking_mode: str,
+                 reveal_distribution: str,
+                 initial_n_unmasked: int,
+                 ):
         valid_mask_positionings = ['left_to_right', 'random']
         if mask_positioning not in valid_mask_positionings:
-            raise ValueError(f"Invalid mask_positioning {mask_positioning}. mode should be in {valid_mask_positionings}")
+            raise ValueError(
+                f"Invalid mask_positioning {mask_positioning}. mode should be in {valid_mask_positionings}")
 
         valid_masking_modes = ['zero_out', 'dedicated_value']
         if masking_mode not in valid_masking_modes:
@@ -66,7 +70,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
 
         valid_reveal_distribution = ['deterministic', 'uniform', 'natural']
         if reveal_distribution not in valid_reveal_distribution:
-            raise ValueError(f"Invalid reveal distribution {reveal_distribution}. mode should be in {valid_reveal_distribution}")
+            raise ValueError(
+                f"Invalid reveal distribution {reveal_distribution}. mode should be in {valid_reveal_distribution}")
 
         super().__init__(game)
         self.n_attributes = n_attributes
@@ -76,7 +81,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         self.reveal_distribution = reveal_distribution
         self.curriculum_level = min(initial_n_unmasked, n_attributes)
 
-
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
         device = sender_input.device
@@ -85,17 +89,17 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         # element of the batch. It is of shape (batch_size,)
         if self.reveal_distribution == 'deterministic':
             probs = torch.zeros((batch_size, self.curriculum_level))
-            probs[:,  -1] = 1.
+            probs[:, -1] = 1.
         elif self.reveal_distribution == 'uniform':
             probs = torch.ones((batch_size, self.curriculum_level)) / self.curriculum_level
         elif self.reveal_distribution == 'natural':
-            # this distribution simulates sampling from a dataset containing 
+            # this distribution simulates sampling from a dataset containing
             # every masked input (up to curriculum_level masks).
             # For k masks, there are (n_attributes choose k)*n_values^k elements
-            
+
             probs = torch.tensor(
-                [scipy.special.comb(self.n_attributes, k) * self.n_values**k 
-                for k in range(1, self.curriculum_level+1)]
+                [scipy.special.comb(self.n_attributes, k) * self.n_values**k
+                 for k in range(1, self.curriculum_level + 1)]
             )
             probs = probs.expand(batch_size, self.curriculum_level)
         else:
@@ -108,10 +112,10 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             idxs_to_reveal = torch.arange(self.n_attributes, dtype=torch.long)
             idxs_to_reveal = idxs_to_reveal.expand(batch_size, self.n_attributes)
         elif self.mask_positioning == 'random':
-            reveal_probability = torch.ones((batch_size, self.n_attributes))/self.n_attributes
+            reveal_probability = torch.ones((batch_size, self.n_attributes)) / self.n_attributes
             idxs_to_reveal = torch.multinomial(reveal_probability,
-                    self.n_attributes,
-                    replacement=False)
+                                               self.n_attributes,
+                                               replacement=False)
 
         idxs_to_reveal = idxs_to_reveal.to(device)
 
@@ -128,7 +132,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                 batch_size, self.n_attributes
             ).to(device)
             mask_idxs_to_reveal = (
-                    mask_idxs_to_reveal < n_revealed.view(batch_size, -1)
+                mask_idxs_to_reveal < n_revealed.view(batch_size, -1)
             ).long()
             idxs_to_reveal = idxs_to_reveal * mask_idxs_to_reveal
             idxs_to_reveal = idxs_to_reveal + idxs_to_reveal[:, 0].view(
@@ -147,15 +151,19 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         if aux_input is None:
             aux_input = {}
         aux_input['mask'] = mask
-        
 
         optimized_loss, interaction = self.game(
-            sender_input, 
-            labels, 
-            receiver_input=None, 
+            sender_input,
+            labels,
+            receiver_input=None,
             aux_input=aux_input
         )
-        interaction.aux['curriculum_level'] = torch.tensor(self.curriculum_level, device=sender_input.device, dtype=torch.float32).expand(batch_size, 1)
+        interaction.aux['curriculum_level'] = torch.tensor(
+            self.curriculum_level,
+            device=sender_input.device,
+            dtype=torch.float32).expand(
+            batch_size,
+            1)
         return optimized_loss, interaction
 
 
@@ -166,4 +174,3 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         if self.curriculum_level < self.n_attributes:
             self.curriculum_level += 1
             print('Curriculum level : ', self.curriculum_level)
-
