@@ -80,10 +80,6 @@ class RnnEncoder(nn.Module):
             rnn_hidden, _ = rnn_hidden
             seq_hidden, _ = seq_hidden
 
-        # print('rnn, seq')
-        # print(rnn_hidden.shape)
-        # print(seq_hidden.shape)
-
         if self.impatient:
             return seq_hidden
         else:

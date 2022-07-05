@@ -425,7 +425,7 @@ class RnnReceiverImpatient(nn.Module):
     def __init__(self, agent, vocab_size, embed_dim, hidden_size, cell='rnn', num_layers=1):
         super(RnnReceiverImpatient, self).__init__()
 
-        self.agent = agent
+        self.agent = agent  # hidden_to_output
         self.encoder = RnnEncoder(vocab_size, embed_dim, hidden_size, cell, num_layers, impatient=True)
 
     def forward(self, message, input=None, aux_input=None, lengths=None):
