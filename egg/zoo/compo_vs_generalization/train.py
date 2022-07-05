@@ -168,7 +168,12 @@ def get_params(params):
     parser.add_argument(
         "--impatient",
         action="store_true",
-       help="Learn according to a curriculum",
+       help="make the listener impatient",
+    parser.add_argument(
+        "--weight_decay",
+        type=float,
+        default=0.005,
+        help="weight decay for adam optimizer"
     )
 
     args = core.init(arg_parser=parser, params=params)
@@ -300,7 +305,7 @@ def main(params):
             initial_n_unmasked=opts.initial_n_unmasked
         )
 
-    optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr, weight_decay=0.005)
+    optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr, weight_decay=opts.weight_decay)
 
     metrics_evaluator = Metrics(
         validation.examples,
