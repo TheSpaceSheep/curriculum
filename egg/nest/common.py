@@ -8,15 +8,15 @@ import json
 
 
 def parse_json_sweep(config):
-    config = {k: v if type(v) is list else [v] for k, v in config.items()}
+    config = {k: v if isinstance(v, list) else [v] for k, v in config.items()}
     perms = list(itertools.product(*config.values()))
 
     def to_arg(k, v):
         if type(v) in (int, float):
             return f"--{k}={v}"
-        elif type(v) is bool:
+        elif isinstance(v, bool):
             return f"--{k}" if v else ""
-        elif type(v) is str:
+        elif isinstance(v, str):
             assert (
                 '"' not in v
             ), f"Key {k} has string value {v} which contains forbidden quotes."
