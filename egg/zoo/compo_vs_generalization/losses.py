@@ -146,7 +146,7 @@ class MaskedLoss(torch.nn.Module):
         # Exact matches: Count 1 if attribute is predicted correctly OR if it is masked.
         acc = torch.all((matches == 1) | (mask == 0), dim=-1).float()
 
-        # Loss for each attribute (you need to flatten the first dimensions 
+        # Loss for each attribute (you need to flatten the first dimensions
         # and reshape them afterwards)
         loss_by_attributes = F.cross_entropy(
             receiver_output.view(-1, self.n_attributes),
@@ -194,18 +194,18 @@ class MaskedImpatientLoss(torch.nn.Module):
         )
 
         # create mask for symbols after EOS token
-        #print('message')
-        #print(_message.shape)
-        #print(_message)
+        # print('message')
+        # print(_message.shape)
+        # print(_message)
         len_mask_idx = torch.arange(seq_len, dtype=torch.long).to(sender_input.device)
         len_mask_idx = len_mask_idx.expand(batch_size, seq_len)
-        #print(_message.argmin(1)) # check
+        # print(_message.argmin(1)) # check
         len_mask = (len_mask_idx <= _message.argmin(1).reshape(batch_size, 1)).float().t()
-        #print(len_mask) # shape (seq_len, bs)
+        # print(len_mask) # shape (seq_len, bs)
         len_mask = len_mask.unsqueeze(-1).expand(seq_len, batch_size, self.n_attributes)
-        #print('len_mask')
-        #print(len_mask.shape) # should be (seq_len, batch_size, self.n_attributes)
-        #print(len_mask[:, 1, 0])
+        print('len_mask')
+        print(len_mask.shape) # should be (seq_len, batch_size, self.n_attributes)
+        print(len_mask[:, 1, 0])
 
         # create attribute mask
         mask = torch.zeros_like(idxs_to_reveal)
@@ -213,35 +213,45 @@ class MaskedImpatientLoss(torch.nn.Module):
             dim=1, index=idxs_to_reveal, value=1.
         ).float()
         mask = mask.expand(seq_len, batch_size, self.n_attributes)
-        #print('mask')
-        #print(mask)
+        # print('mask')
+        # print(mask)
 
         # matches for each attributes at each timestep
-        matches = (sender_input.argmax(dim=-1).expand(seq_len, batch_size, self.n_attributes) == receiver_output.argmax(dim=-1)).float()
+        matches = (
+            sender_input.argmax(
+                dim=- 1).expand(
+                seq_len,
+                batch_size,
+                self.n_attributes) == receiver_output.argmax(
+                dim=- 1)).float()
 
         # Average across attributes (but only count revealed attributes)
-        acc_or = (matches * mask * len_mask).sum(dim=(0, -1)) / (mask*len_mask).sum(dim=(0, -1))
+        positional_acc_or = (matches * len_mask * mask).sum(dim=-1) / mask.sum(dim=-1).mean(0)
+        acc_or = positional_acc_or.sum(dim=0) / len_mask.sum(dim=0).mean(-1)
+        # best_acc_or = positional_acc_or.max(dim=0)[0]
 
         # Exact matches: Count 1 if attribute is predicted correctly OR if it is masked.
-        acc = torch.all((matches == 1) | (mask*len_mask == 0), dim=-1).reshape(-1).float()
+        acc = torch.all((matches == 1) | (mask * len_mask == 0), dim=-1).float().sum(dim=0) / len_mask.sum(dim=0).mean(-1)
 
-        # Loss for each attribute (you need to flatten the first dimensions 
+        # Loss for each attribute (you need to flatten the first dimensions
         # and reshape them afterwards)
+        print(sender_input.shape)
+        print(receiver_output.shape)
         loss_by_attributes = F.cross_entropy(
-            receiver_output.reshape(-1, self.n_attributes),
+            receiver_output.reshape(-1, self.n_values),
             sender_input.expand(seq_len, batch_size, self.n_attributes, self.n_values).argmax(-1).reshape(-1),
             reduction="none",
         ).reshape(seq_len, batch_size, self.n_attributes)
 
         # Take the mean, but only of the revealed attributes
-        print(mask.sum(dim=-1).mean(0)) # number of masked attributes for each element in the batch, at each message step
-        print(len_mask.sum(dim=0).mean(-1)) # number of masked symbols after EOS
+        print(mask.sum(dim=-1).mean(0))  # number of revealed attributes for each element in the batch, at each message step
+        print(len_mask.sum(dim=0).mean(-1))  # number of masked symbols after EOS
         print((loss_by_attributes * mask * len_mask).sum(dim=(0, -1)))
 
-        loss = (loss_by_attributes * mask * len_mask).sum(dim=(0, -1)) / (mask.sum(dim=-1).mean(0) * len_mask.sum(dim=0).mean(-1))
+        loss = (loss_by_attributes * mask * len_mask).sum(dim=(0, -1)) / \
+            (mask.sum(dim=-1).mean(0) * len_mask.sum(dim=0).mean(-1))
         print('loss')
         print(loss)
         print(loss.shape)
 
         return loss, {"acc": acc, "acc_or": acc_or}
-
