@@ -31,14 +31,14 @@ def ask_sender(n_attributes, n_values, dataset, sender, device, game):
     for i in range(len(dataset)):
         meaning = dataset[i]
 
-        masked_meaning, _ = game.mask_attributes(meaning.unsqueeze(0).to(device))
+        meaning, _ = game.mask_attributes(meaning.unsqueeze(0))
 
         attribute = meaning.view(n_attributes, n_values).argmax(dim=-1)
         attributes.append(attribute)
-        meanings.append(meaning.to(device))
+        meanings.append(meaning.squeeze().to(device))
 
         with torch.no_grad():
-            string, *other = sender(masked_meaning)
+            string, *other = sender(meaning.to(device))
         strings.append(string.squeeze(0))
 
     attributes = torch.stack(attributes, dim=0)
