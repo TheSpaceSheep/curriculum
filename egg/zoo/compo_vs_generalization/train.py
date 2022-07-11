@@ -175,6 +175,12 @@ def get_params(params):
         default=0.005,
         help="weight decay for adam optimizer"
     )
+    parser.add_argument(
+        "--n_revealed_test",
+        type=int,
+        default=10,
+        help="number of attributes to reveal when testing"
+    )
 
     args = core.init(arg_parser=parser, params=params)
     return args
@@ -302,7 +308,8 @@ def main(params):
             mask_positioning=opts.mask_positioning,
             masking_mode=opts.masking_mode,
             reveal_distribution=opts.reveal_distribution,
-            initial_n_unmasked=opts.initial_n_unmasked
+            initial_n_unmasked=opts.initial_n_unmasked,
+            n_revealed_test=opts.n_revealed_test
         )
 
     optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr, weight_decay=opts.weight_decay)

@@ -58,6 +58,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                  masking_mode: str,
                  reveal_distribution: str,
                  initial_n_unmasked: int,
+                 n_revealed_test: int
                  ):
         valid_mask_positionings = ['left_to_right', 'random']
         if mask_positioning not in valid_mask_positionings:
@@ -80,6 +81,9 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         self.masking_mode = masking_mode
         self.reveal_distribution = reveal_distribution
         self.curriculum_level = min(initial_n_unmasked, n_attributes)
+
+        # number of attributes to reveal when testing
+        self.n_revealed_test = n_revealed_test
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
@@ -105,8 +109,11 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         else:
             raise NotImplemented
 
-        n_revealed = torch.multinomial(probs, 1).to(device)
-        n_revealed += 1  # so that n_revealed is between 1 and n_attributes
+        if self.training:
+            n_revealed = torch.multinomial(probs, 1).to(device)
+            n_revealed += 1  # so that n_revealed is between 1 and n_attributes
+        else:
+            n_revealed = torch.zeros((batch_size,)).to(device) + self.n_revealed_test
 
         if self.mask_positioning == 'left_to_right':
             idxs_to_reveal = torch.arange(self.n_attributes, dtype=torch.long)
@@ -119,25 +126,23 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
 
         idxs_to_reveal = idxs_to_reveal.to(device)
 
-        # only mask attributes when training
-        if self.training:
-            # mask indices with a redundant value
-            # e.g. if idxs_to_reveal = [[3, 2, 0, 1]] and n_revealed = [[2]]
-            # we define mask_idxs_to_reveal = [[1, 1, 0, 0]]
-            # and we mask idxs_to_reveal with its first value, so as to get
-            # idxs_to_reveal = [[3, 2, 3, 3]].
-            # this way, we only have 2 indices to reveal, but we keep
-            # a consistent shape within the batch.
-            mask_idxs_to_reveal = torch.arange(self.n_attributes).expand(
-                batch_size, self.n_attributes
-            ).to(device)
-            mask_idxs_to_reveal = (
-                mask_idxs_to_reveal < n_revealed.view(batch_size, -1)
-            ).long()
-            idxs_to_reveal = idxs_to_reveal * mask_idxs_to_reveal
-            idxs_to_reveal = idxs_to_reveal + idxs_to_reveal[:, 0].view(
-                batch_size, 1
-            ).expand(batch_size, self.n_attributes) * (1 - mask_idxs_to_reveal)
+        # mask indices with a redundant value
+        # e.g. if idxs_to_reveal = [[3, 2, 0, 1]] and n_revealed = [[2]]
+        # we define mask_idxs_to_reveal = [[1, 1, 0, 0]]
+        # and we mask idxs_to_reveal with its first value, so as to get
+        # idxs_to_reveal = [[3, 2, 3, 3]].
+        # this way, we only have 2 indices to reveal, but we keep
+        # a consistent shape within the batch.
+        mask_idxs_to_reveal = torch.arange(self.n_attributes).expand(
+            batch_size, self.n_attributes
+        ).to(device)
+        mask_idxs_to_reveal = (
+            mask_idxs_to_reveal < n_revealed.view(batch_size, -1)
+        ).long()
+        idxs_to_reveal = idxs_to_reveal * mask_idxs_to_reveal
+        idxs_to_reveal = idxs_to_reveal + idxs_to_reveal[:, 0].view(
+            batch_size, 1
+        ).expand(batch_size, self.n_attributes) * (1 - mask_idxs_to_reveal)
 
         # create attribute mask
         mask = torch.zeros((batch_size, self.n_attributes), device=sender_input.device)
