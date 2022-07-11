@@ -143,7 +143,7 @@ class MaskedLoss(torch.nn.Module):
         # Loss for each attribute (you need to flatten the first dimensions
         # and reshape them afterwards)
         loss_by_attributes = F.cross_entropy(
-            receiver_output.view(-1, self.n_attributes),
+            receiver_output.view(-1, self.n_values),
             sender_input.argmax(-1).view(-1),
             reduction="none",
         ).view(batch_size, self.n_attributes)
