@@ -32,7 +32,7 @@ from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
 from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
-from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater
+from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater, MaskedEvaluator
 
 
 def get_params(params):
@@ -171,12 +171,6 @@ def get_params(params):
         default=0.005,
         help="weight decay for adam optimizer"
     )
-    parser.add_argument(
-        "--n_revealed_test",
-        type=int,
-        default=10,
-        help="number of attributes to reveal when testing"
-    )
 
     args = core.init(arg_parser=parser, params=params)
     return args
@@ -293,7 +287,6 @@ def main(params):
             masking_mode=opts.masking_mode,
             reveal_distribution=opts.reveal_distribution,
             initial_n_unmasked=opts.initial_n_unmasked,
-            n_revealed_test=opts.n_revealed_test
         )
 
     optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr, weight_decay=opts.weight_decay)
@@ -324,6 +317,12 @@ def main(params):
     )
 
     holdout_evaluator = Evaluator(loaders, opts.device, freq=0)
+    masked_evaluator = MaskedEvaluator(
+        validation_loader, 
+        list(range(1, opts.n_attributes+1)),
+        opts.device,
+        freq=1
+    )
     interaction_saver = core.InteractionSaver(
         test_epochs=list(range(1, opts.n_epochs, opts.stats_freq)),
         checkpoint_dir=f"{sys.argv[1]}")
@@ -333,6 +332,7 @@ def main(params):
         metrics_evaluator,
         holdout_evaluator,
         interaction_saver,
+        masked_evaluator,
     ]
 
     if opts.curriculum:
