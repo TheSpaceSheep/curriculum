@@ -58,7 +58,6 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                  masking_mode: str,
                  reveal_distribution: str,
                  initial_n_unmasked: int,
-                 n_revealed_test: int
                  ):
         valid_mask_positionings = ['left_to_right', 'random']
         if mask_positioning not in valid_mask_positionings:
@@ -82,8 +81,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         self.reveal_distribution = reveal_distribution
         self.curriculum_level = min(initial_n_unmasked, n_attributes)
 
-        # number of attributes to reveal when testing
-        self.n_revealed_test = n_revealed_test
+        # number of attributes to reveal when testing (will be set by callback)
+        self.n_revealed_test = None
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
@@ -109,7 +108,7 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         else:
             raise NotImplemented
 
-        if self.training:
+        if self.training or self.n_revealed_test is None:
             n_revealed = torch.multinomial(probs, 1).to(device)
             n_revealed += 1  # so that n_revealed is between 1 and n_attributes
         else:
