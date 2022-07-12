@@ -140,7 +140,12 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             n_revealed = torch.multinomial(probs, 1).to(device)
             n_revealed += 1  # so that n_revealed is between 1 and n_attributes
         else:
-            n_revealed = torch.zeros((batch_size,)).to(device) + self.n_revealed_test
+            n_revealed = torch.zeros((batch_size,)).to(device)
+            if self.n_revealed_test is not None:
+                n_revealed = n_revealed + self.n_revealed_test
+            else:
+                n_revealed = n_revealed + self.curriculum_level
+            print(n_revealed)
 
         if self.mask_positioning == 'left_to_right':
             idxs_to_reveal = torch.arange(self.n_attributes, dtype=torch.long)
