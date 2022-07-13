@@ -185,7 +185,6 @@ class Metrics(core.Callback):
 
 
 class Evaluator(core.Callback):
-    # TODO: rewrite this
     def __init__(self, loaders_metrics, device, freq=1):
         self.loaders_metrics = loaders_metrics
         self.device = device
