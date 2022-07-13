@@ -229,15 +229,3 @@ class MaskedImpatientLoss(torch.nn.Module):
         # loss = loss / len_mask.sum(dim=0).mean(-1)
 
         return loss, {"acc": acc, "acc_or": acc_or}
-=======
-        logs = {
-            "acc": acc,
-            "acc_or": acc_or,
-        }
-
-        return loss, logs
-
->>>>>>> 053aed9... pass curriculum level through eggs logging system
-=======
-        return loss, {"acc": acc, "acc_or": acc_or}
->>>>>>> 929a41f... clean code

@@ -168,7 +168,8 @@ def get_params(params):
     parser.add_argument(
         "--impatient",
         action="store_true",
-       help="make the listener impatient",
+       help="make the listener impatient"
+    )
     parser.add_argument(
         "--weight_decay",
         type=float,
