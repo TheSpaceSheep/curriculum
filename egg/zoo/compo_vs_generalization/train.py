@@ -42,7 +42,7 @@ def get_params(params):
     parser.add_argument("--data_scaler", type=int, default=100)
     parser.add_argument("--stats_freq", type=int, default=0)
     parser.add_argument(
-        "--baseline", type=str, choices=["no", "mean", "builtin"], default="mean"
+        "--baseline", type=str, choices=["no", "mean", "builtin", "masked_builtin"], default="mean"
     )
     parser.add_argument(
         "--density_data", type=int, default=0, help="no sampling if equal 0"
@@ -260,6 +260,7 @@ def main(params):
         "no": core.baselines.NoBaseline,
         "mean": core.baselines.MeanBaseline,
         "builtin": core.baselines.BuiltInBaseline,
+        "masked_builtin": core.baselines.MaskedBaseline
     }[opts.baseline]
 
     if opts.curriculum and opts.masking_mode != "dedicated_value":

@@ -594,11 +594,11 @@ class CommunicationRnnReinforce(nn.Module):
         length_loss = message_length.float() * self.length_cost
 
         policy_length_loss = (
-            (length_loss - self.baselines["length"].predict(length_loss))
+            (length_loss - self.baselines["length"].predict(length_loss, aux_input))
             * effective_log_prob_s
         ).mean()
         policy_loss = (
-            (loss.detach() - self.baselines["loss"].predict(loss.detach())) * log_prob
+            (loss.detach() - self.baselines["loss"].predict(loss.detach(), aux_input)) * log_prob
         ).mean()
 
         optimized_loss = policy_length_loss + policy_loss - weighted_entropy
