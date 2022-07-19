@@ -86,6 +86,34 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
+
+        sender_input, mask = self.mask_attributes(sender_input)
+
+        # pass masking info to loss (for logging)
+        if aux_input is None:
+            aux_input = {}
+        aux_input['mask'] = mask
+
+        optimized_loss, interaction = self.game(
+            sender_input,
+            labels,
+            receiver_input=None,
+            aux_input=aux_input
+        )
+        interaction.aux['curriculum_level'] = torch.tensor(
+            self.curriculum_level,
+            device=sender_input.device,
+            dtype=torch.float32).expand(
+            batch_size,
+            1)
+        return optimized_loss, interaction
+
+    def mask_attributes(self, sender_input):
+        """
+        Takes in a batch of inputs and mask attributes according to the game's internal
+        parameters. returns the masked batch and the mask
+        """
+        batch_size = sender_input.shape[0]
         device = sender_input.device
 
         # n_revealed specifies the number of revealed attributes for each
@@ -149,26 +177,10 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         mask = mask.detach()
 
         # mask attributes
-        sender_input = sender_input * mask.repeat_interleave(repeats=self.n_values, dim=1)
+        masked_input = sender_input * mask.repeat_interleave(repeats=self.n_values, dim=1)
 
-        # pass masking info to loss and curriculum (for logging)
-        if aux_input is None:
-            aux_input = {}
-        aux_input['mask'] = mask
+        return masked_input, mask
 
-        optimized_loss, interaction = self.game(
-            sender_input,
-            labels,
-            receiver_input=None,
-            aux_input=aux_input
-        )
-        interaction.aux['curriculum_level'] = torch.tensor(
-            self.curriculum_level,
-            device=sender_input.device,
-            dtype=torch.float32).expand(
-            batch_size,
-            1)
-        return optimized_loss, interaction
 
     def update_curriculum_level(self):
         """

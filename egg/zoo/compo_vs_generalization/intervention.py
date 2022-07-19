@@ -23,7 +23,7 @@ except ImportError:
     )
 
 
-def ask_sender(n_attributes, n_values, dataset, sender, device):
+def ask_sender(n_attributes, n_values, dataset, sender, device, game):
     attributes = []
     strings = []
     meanings = []
@@ -31,12 +31,14 @@ def ask_sender(n_attributes, n_values, dataset, sender, device):
     for i in range(len(dataset)):
         meaning = dataset[i]
 
+        meaning, _ = game.mask_attributes(meaning.unsqueeze(0))
+
         attribute = meaning.view(n_attributes, n_values).argmax(dim=-1)
         attributes.append(attribute)
-        meanings.append(meaning.to(device))
+        meanings.append(meaning.squeeze().to(device))
 
         with torch.no_grad():
-            string, *other = sender(meaning.unsqueeze(0).to(device))
+            string, *other = sender(meaning.to(device))
         strings.append(string.squeeze(0))
 
     attributes = torch.stack(attributes, dim=0)
@@ -71,9 +73,9 @@ def information_gap_representation(meanings, representations):
     return score.item()
 
 
-def information_gap_position(n_attributes, n_values, dataset, sender, device):
+def information_gap_position(n_attributes, n_values, dataset, sender, device, game):
     attributes, strings, _meanings = ask_sender(
-        n_attributes, n_values, dataset, sender, device
+        n_attributes, n_values, dataset, sender, device, game
     )
     return information_gap_representation(attributes, strings)
 
@@ -89,9 +91,9 @@ def histogram(strings, vocab_size):
     return histogram
 
 
-def information_gap_vocab(n_attributes, n_values, dataset, sender, device, vocab_size):
+def information_gap_vocab(n_attributes, n_values, dataset, sender, device, vocab_size, game):
     attributes, strings, _meanings = ask_sender(
-        n_attributes, n_values, dataset, sender, device
+        n_attributes, n_values, dataset, sender, device, game
     )
 
     histograms = histogram(strings, vocab_size)
@@ -117,9 +119,9 @@ def cosine_dist(_list):
     return distances
 
 
-def topographic_similarity(n_attributes, n_values, dataset, sender, device):
+def topographic_similarity(n_attributes, n_values, dataset, sender, device, game):
     _attributes, strings, meanings = ask_sender(
-        n_attributes, n_values, dataset, sender, device
+        n_attributes, n_values, dataset, sender, device, game
     )
     list_string = []
     for s in strings:
@@ -146,7 +148,12 @@ class Metrics(core.Callback):
         game.eval()
 
         positional_disent = information_gap_position(
-            self.n_attributes, self.n_values, self.dataset, game.sender, self.device
+            self.n_attributes,
+            self.n_values,
+            self.dataset,
+            game.sender,
+            self.device,
+            game
         )
         bos_disent = information_gap_vocab(
             self.n_attributes,
@@ -155,9 +162,15 @@ class Metrics(core.Callback):
             game.sender,
             self.device,
             self.vocab_size,
+            game
         )
         topo_sim = topographic_similarity(
-            self.n_attributes, self.n_values, self.dataset, game.sender, self.device
+            self.n_attributes,
+            self.n_values,
+            self.dataset,
+            game.sender,
+            self.device,
+            game
         )
 
         output = dict(
