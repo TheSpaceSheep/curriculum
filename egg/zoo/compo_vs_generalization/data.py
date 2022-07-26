@@ -238,6 +238,20 @@ def mask_attributes(sender_input,
 
     return masked_input
 
+def floatable(string):
+    try:
+        float(string)
+        return True
+    except ValueError:
+        return False
+
+
+def intable(string):
+    try:
+        int(string)
+        return True
+    except ValueError:
+        return False
 
 if __name__ == "__main__":
     dataset = enumerate_attribute_value(n_attributes=2, n_values=10)

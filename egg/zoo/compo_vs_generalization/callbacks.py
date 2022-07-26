@@ -39,6 +39,7 @@ class CurriculumUpdater(core.Callback):
 
     def on_epoch_end(self, loss: float, logs: Interaction, epoch: int):
         acc_or = logs.aux["acc_or"].mean().item()
+        self.game.last_acc = acc_or
         update_curriculum = False
         if self.acc_threshold is None:
             self.acc_ors.append(acc_or)

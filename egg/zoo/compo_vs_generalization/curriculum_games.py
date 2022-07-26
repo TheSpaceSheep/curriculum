@@ -3,8 +3,7 @@ import torch.nn as nn
 import scipy.special
 from abc import abstractmethod
 from egg.core.reinforce_wrappers import SenderReceiverRnnReinforce
-from egg.zoo.compo_vs_generalization.data import mask_attributes
-from egg.zoo.compo_vs_generalization.losses import MaskedLoss
+from egg.zoo.compo_vs_generalization.data import floatable
 
 
 class CurriculumGameWrapper(nn.Module):
@@ -68,8 +67,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
         if masking_mode not in valid_masking_modes:
             raise ValueError(f"Invalid masking_mode {masking_mode}. mode should be in {valid_masking_modes}")
 
-        valid_reveal_distribution = ['deterministic', 'uniform', 'natural']
-        if reveal_distribution not in valid_reveal_distribution:
+        valid_reveal_distribution = ['deterministic', 'uniform', 'natural', 'binomial']
+        if reveal_distribution not in valid_reveal_distribution and not floatable(reveal_distribution):
             raise ValueError(
                 f"Invalid reveal distribution {reveal_distribution}. mode should be in {valid_reveal_distribution}")
 
@@ -83,6 +82,9 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
 
         # number of attributes to reveal when testing (will be set by callback)
         self.n_revealed_test = None
+
+        # last accuracy for curriculum purposes
+        self.last_acc = 0.
 
     def forward(self, sender_input, labels, receiver_input=None, aux_input=None):
         batch_size = sender_input.shape[0]
@@ -133,6 +135,24 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
                  for k in range(1, self.curriculum_level + 1)]
             )
             probs = probs.expand(batch_size, self.curriculum_level)
+        elif floatable(self.reveal_distribution):
+            # if reveal distribution is a float, we treat it as a temperature parameter
+            # and create a distribution between deterministic and uniform
+            probs = torch.zeros((batch_size, self.curriculum_level))
+            probs[:, -1] = 1./float(self.reveal_distribution)
+            probs = torch.softmax(probs, dim=1)
+        elif self.reveal_distribution == 'binomial':
+            # binomial distribution, with a sliding mean based on last accuracy.
+            # the distribution is interpolated with the uniform distribution
+            # through a parameter t in 0, 1
+            t = 0.2
+            probs = torch.distributions.binomial.Binomial(self.curriculum_level-1, self.last_acc)
+            probs = torch.exp(probs.log_prob(probs.enumerate_support()))  # get actual probability mass function
+            probs = t/self.curriculum_level + (1-t)*probs  # interpolation with uniform distribution
+            probs = probs.expand(batch_size, self.curriculum_level)
+
+
+
         else:
             raise NotImplemented
 

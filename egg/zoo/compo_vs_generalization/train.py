@@ -299,6 +299,7 @@ def main(params):
         tot_n_values,
         opts.vocab_size + 1,
         freq=opts.stats_freq,
+        rng=rng
     )
 
     loaders = []
