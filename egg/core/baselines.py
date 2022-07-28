@@ -17,7 +17,7 @@ class Baseline(ABC):
         pass
 
     @abstractmethod
-    def predict(self, loss: torch.Tensor) -> torch.Tensor:
+    def predict(self, loss: torch.Tensor, aux_input=None) -> torch.Tensor:
         """Return baseline for the loss
         Args:
             loss (torch.Tensor): batch of losses be baselined
@@ -34,7 +34,7 @@ class NoBaseline(Baseline):
     def update(self, loss: torch.Tensor) -> None:
         pass
 
-    def predict(self, loss: torch.Tensor) -> torch.Tensor:
+    def predict(self, loss: torch.Tensor, aux_input=None) -> torch.Tensor:
         return torch.zeros(1, device=loss.device)
 
 
@@ -58,7 +58,7 @@ class MeanBaseline(Baseline):
             loss.detach().mean().item() - self.mean_baseline
         ) / self.n_points
 
-    def predict(self, loss: torch.Tensor) -> torch.Tensor:
+    def predict(self, loss: torch.Tensor, aux_input=None) -> torch.Tensor:
         if self.mean_baseline.device != loss.device:
             self.mean_baseline = self.mean_baseline.to(loss.device)
         return self.mean_baseline
@@ -76,7 +76,7 @@ class BuiltInBaseline(Baseline):
     def update(self, _: torch.Tensor) -> None:
         pass
 
-    def predict(self, loss: torch.Tensor) -> torch.Tensor:
+    def predict(self, loss: torch.Tensor, aux_input=None) -> torch.Tensor:
         if len(loss.size()) == 0 or loss.size(0) <= 1:
             return loss
         bsz = loss.size(0)
@@ -87,3 +87,34 @@ class BuiltInBaseline(Baseline):
         baseline = (mean * bsz - loss_detached) / (bsz - 1.0)
 
         return baseline
+
+
+class MaskedBaseline(Baseline):
+    """ Same as Built-in baseline, but that computes a mean 
+    based on the number of masks in the batch.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def update(self, _: torch.Tensor) -> None:
+        pass
+
+    def predict(self, loss: torch.Tensor, aux_input=None) -> torch.Tensor:
+        if len(loss.size()) == 0 or loss.size(0) <= 1:
+            return loss
+
+        mask = aux_input["mask"]
+        n_masks = mask.sum(1)
+        
+        bsz = loss.size(0)
+
+        loss_detached = loss.detach()
+        mean = torch.zeros_like(loss_detached)
+        for i in range(1, mask.shape[1]+1):
+            mean[n_masks==i] = loss_detached[n_masks==i].mean()
+
+        baseline = (mean * bsz - loss_detached) / (bsz - 1.0)
+
+        return baseline
+
+

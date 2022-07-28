@@ -32,7 +32,7 @@ from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
 from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
-from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater
+from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater, MaskedEvaluator
 
 
 def get_params(params):
@@ -42,7 +42,7 @@ def get_params(params):
     parser.add_argument("--data_scaler", type=int, default=100)
     parser.add_argument("--stats_freq", type=int, default=0)
     parser.add_argument(
-        "--baseline", type=str, choices=["no", "mean", "builtin"], default="mean"
+        "--baseline", type=str, choices=["no", "mean", "builtin", "masked_builtin"], default="mean"
     )
     parser.add_argument(
         "--density_data", type=int, default=0, help="no sampling if equal 0"
@@ -165,6 +165,12 @@ def get_params(params):
         default="deterministic",
         help="Distribution to sample the number of attributes to reveal"
     )
+    parser.add_argument(
+        "--weight_decay",
+        type=float,
+        default=0.005,
+        help="weight decay for adam optimizer"
+    )
 
     args = core.init(arg_parser=parser, params=params)
     return args
@@ -254,6 +260,7 @@ def main(params):
         "no": core.baselines.NoBaseline,
         "mean": core.baselines.MeanBaseline,
         "builtin": core.baselines.BuiltInBaseline,
+        "masked_builtin": core.baselines.MaskedBaseline
     }[opts.baseline]
 
     if opts.curriculum and opts.masking_mode != "dedicated_value":
@@ -280,10 +287,10 @@ def main(params):
             mask_positioning=opts.mask_positioning,
             masking_mode=opts.masking_mode,
             reveal_distribution=opts.reveal_distribution,
-            initial_n_unmasked=opts.initial_n_unmasked
+            initial_n_unmasked=opts.initial_n_unmasked,
         )
 
-    optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr)
+    optimizer = torch.optim.Adam(game.parameters(), lr=opts.lr, weight_decay=opts.weight_decay)
 
     metrics_evaluator = Metrics(
         validation.examples,
@@ -292,6 +299,7 @@ def main(params):
         tot_n_values,
         opts.vocab_size + 1,
         freq=opts.stats_freq,
+        rng=rng
     )
 
     loaders = []
@@ -311,6 +319,12 @@ def main(params):
     )
 
     holdout_evaluator = Evaluator(loaders, opts.device, freq=0)
+    masked_evaluator = MaskedEvaluator(
+        validation_loader, 
+        list(range(1, opts.n_attributes+1)),
+        opts.device,
+        freq=1
+    )
     interaction_saver = core.InteractionSaver(
         test_epochs=list(range(1, opts.n_epochs, opts.stats_freq)),
         checkpoint_dir=f"{sys.argv[1]}")
@@ -320,6 +334,7 @@ def main(params):
         metrics_evaluator,
         holdout_evaluator,
         interaction_saver,
+        masked_evaluator,
     ]
 
     if opts.curriculum:

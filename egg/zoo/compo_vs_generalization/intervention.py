@@ -7,12 +7,14 @@
 import json
 
 import torch
+from torch.utils.data import DataLoader
 from scipy import spatial
 from scipy.stats import spearmanr
 
 import egg.core as core
 from egg.core.batch import Batch
 from egg.zoo.language_bottleneck.intervention import entropy, mutual_info
+from egg.zoo.compo_vs_generalization.data import build_random_dataset, one_hotify
 
 try:
     import editdistance  # package to install https://pypi.org/project/editdistance/0.3.1/
@@ -23,7 +25,7 @@ except ImportError:
     )
 
 
-def ask_sender(n_attributes, n_values, dataset, sender, device):
+def ask_sender(n_attributes, n_values, dataset, sender, device, game):
     attributes = []
     strings = []
     meanings = []
@@ -31,12 +33,14 @@ def ask_sender(n_attributes, n_values, dataset, sender, device):
     for i in range(len(dataset)):
         meaning = dataset[i]
 
+        meaning, _ = game.mask_attributes(meaning.unsqueeze(0))
+
         attribute = meaning.view(n_attributes, n_values).argmax(dim=-1)
         attributes.append(attribute)
-        meanings.append(meaning.to(device))
+        meanings.append(meaning.squeeze().to(device))
 
         with torch.no_grad():
-            string, *other = sender(meaning.unsqueeze(0).to(device))
+            string, *other = sender(meaning.to(device))
         strings.append(string.squeeze(0))
 
     attributes = torch.stack(attributes, dim=0)
@@ -44,6 +48,7 @@ def ask_sender(n_attributes, n_values, dataset, sender, device):
     meanings = torch.stack(meanings, dim=0)
 
     return attributes, strings, meanings
+
 
 
 def information_gap_representation(meanings, representations):
@@ -71,9 +76,9 @@ def information_gap_representation(meanings, representations):
     return score.item()
 
 
-def information_gap_position(n_attributes, n_values, dataset, sender, device):
+def information_gap_position(n_attributes, n_values, dataset, sender, device, game):
     attributes, strings, _meanings = ask_sender(
-        n_attributes, n_values, dataset, sender, device
+        n_attributes, n_values, dataset, sender, device, game
     )
     return information_gap_representation(attributes, strings)
 
@@ -89,9 +94,9 @@ def histogram(strings, vocab_size):
     return histogram
 
 
-def information_gap_vocab(n_attributes, n_values, dataset, sender, device, vocab_size):
+def information_gap_vocab(n_attributes, n_values, dataset, sender, device, vocab_size, game):
     attributes, strings, _meanings = ask_sender(
-        n_attributes, n_values, dataset, sender, device
+        n_attributes, n_values, dataset, sender, device, game
     )
 
     histograms = histogram(strings, vocab_size)
@@ -117,22 +122,47 @@ def cosine_dist(_list):
     return distances
 
 
-def topographic_similarity(n_attributes, n_values, dataset, sender, device):
-    _attributes, strings, meanings = ask_sender(
-        n_attributes, n_values, dataset, sender, device
-    )
-    list_string = []
-    for s in strings:
-        list_string.append([x.item() for x in s])
-    distance_messages = edit_dist(list_string)
-    distance_inputs = cosine_dist(meanings.cpu().numpy())
+def fast_cosine_dist(batch):
+    norms = torch.linalg.norm(batch, dim=1, keepdim=True)
+    cos_matrix = 1 - (batch @ batch.T / (norms @ norms.T))
+    distances = []
+    for i in range(len(batch)-1):
+        for j in range(i + 1, len(batch)):
+            distances.append(cos_matrix[i, j].item())
+    return distances
 
-    corr = spearmanr(distance_messages, distance_inputs).correlation
-    return corr
+
+def topographic_similarity(n_attributes, n_values, sender, device, game, rng):
+    """
+    Computes the topographic similarity on 10 batches of 1000 randomly selected
+    masked inputs and returns the mean.
+    """
+    top_sims = torch.zeros(10)
+    dataset = build_random_dataset(n_attributes, n_values, 10000, rng=rng)
+    dataset = one_hotify(dataset, n_attributes, n_values)
+    loader = DataLoader(dataset, batch_size=1000)
+
+    for batch_id, batch in enumerate(loader):
+        batch = batch.to(device)
+        with torch.no_grad():
+            meanings, _ = game.mask_attributes(batch)
+            attributes = meanings.view(1000, n_attributes, n_values).argmax(dim=-1)
+            strings, *other = sender(meanings.to(device))
+        list_string = []
+        for s in strings:
+            list_string.append([x.item() for x in s])
+
+        distance_messages = edit_dist(list_string)
+        distance_inputs = fast_cosine_dist(meanings)
+
+        corr = spearmanr(distance_messages, distance_inputs).correlation
+        top_sims[batch_id] = corr
+
+    return top_sims.mean().item()
 
 
 class Metrics(core.Callback):
-    def __init__(self, dataset, device, n_attributes, n_values, vocab_size, freq=1):
+    def __init__(self, dataset, device, n_attributes, n_values, vocab_size, freq=1, rng=None):
         self.dataset = dataset
         self.device = device
         self.n_attributes = n_attributes
@@ -140,13 +170,19 @@ class Metrics(core.Callback):
         self.epoch = 0
         self.vocab_size = vocab_size
         self.freq = freq
+        self.rng = rng
 
     def dump_stats(self):
         game = self.trainer.game
         game.eval()
 
         positional_disent = information_gap_position(
-            self.n_attributes, self.n_values, self.dataset, game.sender, self.device
+            self.n_attributes,
+            self.n_values,
+            self.dataset,
+            game.sender,
+            self.device,
+            game
         )
         bos_disent = information_gap_vocab(
             self.n_attributes,
@@ -155,9 +191,15 @@ class Metrics(core.Callback):
             game.sender,
             self.device,
             self.vocab_size,
+            game
         )
         topo_sim = topographic_similarity(
-            self.n_attributes, self.n_values, self.dataset, game.sender, self.device
+            self.n_attributes,
+            self.n_values,
+            game.sender,
+            self.device,
+            game,
+            self.rng
         )
 
         output = dict(

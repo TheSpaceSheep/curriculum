@@ -272,6 +272,7 @@ class RnnSenderReinforce(nn.Module):
         self.embed_dim = embed_dim
         self.vocab_size = vocab_size
         self.num_layers = num_layers
+        self.layer_norm = nn.LayerNorm(hidden_size)
         self.cells = None
 
         cell = cell.lower()
@@ -314,6 +315,7 @@ class RnnSenderReinforce(nn.Module):
         for step in range(self.max_len):
             for i, layer in enumerate(self.cells):
                 if isinstance(layer, nn.LSTMCell):
+                    prev_hidden[i] = self.layer_norm(prev_hidden[i])
                     h_t, c_t = layer(input, (prev_hidden[i], prev_c[i]))
                     prev_c[i] = c_t
                 else:
@@ -592,11 +594,11 @@ class CommunicationRnnReinforce(nn.Module):
         length_loss = message_length.float() * self.length_cost
 
         policy_length_loss = (
-            (length_loss - self.baselines["length"].predict(length_loss))
+            (length_loss - self.baselines["length"].predict(length_loss, aux_input))
             * effective_log_prob_s
         ).mean()
         policy_loss = (
-            (loss.detach() - self.baselines["loss"].predict(loss.detach())) * log_prob
+            (loss.detach() - self.baselines["loss"].predict(loss.detach(), aux_input)) * log_prob
         ).mean()
 
         optimized_loss = policy_length_loss + policy_loss - weighted_entropy
