@@ -33,6 +33,7 @@ from egg.zoo.compo_vs_generalization.intervention import Evaluator, Metrics
 from egg.zoo.compo_vs_generalization.curriculum_games import GraduallyRevealAttributes
 from egg.zoo.compo_vs_generalization.losses import DiffLoss, MaskedLoss
 from egg.zoo.compo_vs_generalization.callbacks import CurriculumUpdater, MaskedEvaluator
+from egg.zoo.compo_vs_generalization.meta_trainer import MetaTrainer
 
 
 def get_params(params):
@@ -170,6 +171,11 @@ def get_params(params):
         type=float,
         default=0.005,
         help="weight decay for adam optimizer"
+    )
+    parser.add_argument(
+        "--metalearning",
+        action="store_true",
+        help="meta train on harder tasks while training",
     )
 
     args = core.init(arg_parser=parser, params=params)
@@ -344,13 +350,24 @@ def main(params):
             plateau_threshold=opts.plateau_threshold)
         callbacks.append(curriculum_manager)
 
-    trainer = core.Trainer(
-        game=game,
-        optimizer=optimizer,
-        train_data=train_loader,
-        validation_data=validation_loader,
-        callbacks=callbacks
-    )
+    if not opts.metalearning:
+        trainer = core.Trainer(
+            game=game,
+            optimizer=optimizer,
+            train_data=train_loader,
+            validation_data=validation_loader,
+            callbacks=callbacks
+        )
+    else:
+        trainer = MetaTrainer(
+            meta_tasks=[10],
+            meta_lr=0.01,
+            game=game,
+            optimizer=optimizer,
+            train_data=train_loader,
+            validation_data=validation_loader,
+            callbacks=callbacks
+        )
 
     print("Beginning training")
 
