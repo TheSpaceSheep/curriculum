@@ -162,8 +162,8 @@ def topographic_similarity(n_attributes, n_values, sender, device, game, rng):
 
 
 class Metrics(core.Callback):
-    def __init__(self, dataset_small, device, n_attributes, n_values, vocab_size, freq=1, rng=None):
-        self.dataset = dataset_small
+    def __init__(self, dataset, device, n_attributes, n_values, vocab_size, freq=1, rng=None):
+        self.dataset = dataset
         self.device = device
         self.n_attributes = n_attributes
         self.n_values = n_values
@@ -176,25 +176,23 @@ class Metrics(core.Callback):
         game = self.trainer.game
         game.eval()
 
-        #positional_disent = information_gap_position(
-        #    self.n_attributes,
-        #    self.n_values,
-        #    self.dataset,
-        #    game.sender,
-        #    self.device,
-        #    game
-        #)
-        #bos_disent = information_gap_vocab(
-        #    self.n_attributes,
-        #    self.n_values,
-        #    self.dataset,
-        #    game.sender,
-        #    self.device,
-        #    self.vocab_size,
-        #    game
-        #)
-        positional_disent = 0.
-        bos_disent = 0.
+        positional_disent = information_gap_position(
+            self.n_attributes,
+            self.n_values,
+            self.dataset,
+            game.sender,
+            self.device,
+            game
+        )
+        bos_disent = information_gap_vocab(
+            self.n_attributes,
+            self.n_values,
+            self.dataset,
+            game.sender,
+            self.device,
+            self.vocab_size,
+            game
+        )
         topo_sim = topographic_similarity(
             self.n_attributes,
             self.n_values,
