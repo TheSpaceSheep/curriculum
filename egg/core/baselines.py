@@ -104,13 +104,13 @@ class MaskedBaseline(Baseline):
             return loss
 
         mask = aux_input["mask"]
+        n_masks = mask.sum(1)
         
         bsz = loss.size(0)
 
         loss_detached = loss.detach()
         mean = torch.zeros_like(loss_detached)
         for i in range(1, mask.shape[1]+1):
-            n_masks = mask.sum(1)
             mean[n_masks==i] = loss_detached[n_masks==i].mean()
 
         baseline = (mean * bsz - loss_detached) / (bsz - 1.0)
