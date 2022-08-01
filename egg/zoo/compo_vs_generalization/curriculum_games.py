@@ -145,8 +145,8 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             # binomial distribution, with a sliding mean based on last accuracy.
             # the distribution is interpolated with the uniform distribution
             # through a parameter t in 0, 1
-            t = 0.2
-            probs = torch.distributions.binomial.Binomial(self.curriculum_level-1, self.last_acc)
+            t = 0.3
+            probs = torch.distributions.binomial.Binomial(self.curriculum_level-1, min(self.last_acc, 0.95))
             probs = torch.exp(probs.log_prob(probs.enumerate_support()))  # get actual probability mass function
             probs = t/self.curriculum_level + (1-t)*probs  # interpolation with uniform distribution
             probs = probs.expand(batch_size, self.curriculum_level)
