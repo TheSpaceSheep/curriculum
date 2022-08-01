@@ -49,7 +49,7 @@ class MetaTrainer(core.Trainer):
         n_batches = 0
         interactions = []
 
-        n_inner_iter = 1  # only one meta learning step
+        n_inner_iter = 3  # only one meta learning step
 
         self.game.train()
 
@@ -83,26 +83,11 @@ class MetaTrainer(core.Trainer):
                                 # hence, we need to account for that when aggregating grads
                                 optimized_loss = optimized_loss / self.update_freq
 
-                            #if self.scaler:
-                            #    self.scaler.scale(optimized_loss).backward()
-                            #else:
-                            #    optimized_loss.backward()
-
                             if batch_id % self.update_freq == self.update_freq - 1:
-                                #if self.scaler:
-                                #    self.scaler.unscale_(self.optimizer)
-
                                 if self.grad_norm:
                                     torch.nn.utils.clip_grad_norm_(
                                         fgame.parameters(), self.grad_norm
                                     )
-                                #if self.scaler:
-                                #    self.scaler.step(self.optimizer)
-                                #    self.scaler.update()
-                                #else:
-                                #    self.optimizer.step()
-
-                                #self.optimizer.zero_grad()
                                 diffopt.step(optimized_loss)
 
                         # meta optimization
