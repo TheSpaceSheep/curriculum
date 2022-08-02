@@ -137,10 +137,18 @@ class GraduallyRevealAttributes(CurriculumGameWrapper):
             probs = probs.expand(batch_size, self.curriculum_level)
         elif floatable(self.reveal_distribution):
             # if reveal distribution is a float, we treat it as a temperature parameter
-            # and create a distribution between deterministic and uniform
-            probs = torch.zeros((batch_size, self.curriculum_level))
-            probs[:, -1] = 1./float(self.reveal_distribution)
-            probs = torch.softmax(probs, dim=1)
+            # and create a distribution between natural and uniform
+            natural_probs = torch.zeros((batch_size, self.curriculum_level))
+            natural_probs = torch.tensor(
+                [scipy.special.comb(self.n_attributes, k) * self.n_values**k
+                 for k in range(1, self.curriculum_level + 1)]
+            )
+            #probs[:, -1] = 1./float(self.reveal_distribution)
+            #probs = torch.softmax(probs, dim=1)
+            log_probs = torch.log(natural_probs)
+            probs = torch.softmax(1/float(self.reveal_dsitribution)*log_probs, dim=0)
+            probs = probs.expand(batch_size, self.curriculum_level)
+
         elif self.reveal_distribution == 'binomial':
             # binomial distribution, with a sliding mean based on last accuracy.
             # the distribution is interpolated with the uniform distribution
